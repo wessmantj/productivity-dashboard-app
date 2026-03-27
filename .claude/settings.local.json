@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcode-select -p)",
+      "Bash(swift --version)",
+      "Bash(python3 gen_project.py)",
+      "Bash(xcodebuild -project Stack.xcodeproj -scheme Stack -destination \"platform=iOS Simulator,name=iPhone 16\" -configuration Debug build CODE_SIGNING_ALLOWED=NO)",
+      "Bash(xcrun --sdk macosx --show-sdk-path)",
+      "Bash(xcrun --sdk iphonesimulator --show-sdk-path)",
+      "Bash(xcodebuild -list -project /Users/wessmantj/Documents/GitHub/productivity-dashboard-app/Stack.xcodeproj)",
+      "Read(//Users/wessmantj/Library/Developer/Xcode/DerivedData/Stack-cxxqjubzsyltruatxwbmgjmltjrj/Build/Products/Debug-iphonesimulator/Stack.app/**)",
+      "Bash(plutil -p /Users/wessmantj/Library/Developer/Xcode/DerivedData/Stack-cxxqjubzsyltruatxwbmgjmltjrj/Build/Products/Debug-iphonesimulator/Stack.app/Info.plist)",
+      "Bash(echo \"exit:$?\")"
+    ]
+  }
+}
