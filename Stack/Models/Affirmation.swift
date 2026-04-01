@@ -3,9 +3,9 @@ import SwiftData
 
 @Model
 final class Affirmation {
-    var text: String
-    var sortOrder: Int
-    var isActive: Bool
+    var text: String = ""
+    var sortOrder: Int = 0
+    var isActive: Bool = false
 
     init(text: String, sortOrder: Int = 0, isActive: Bool = true) {
         self.text = text

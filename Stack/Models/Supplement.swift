@@ -3,11 +3,11 @@ import Foundation
 
 @Model
 final class Supplement {
-    var name: String
-    var dose: String
-    var time: String
-    var isTakenToday: Bool
-    var lastResetDate: Date
+    var name: String = ""
+    var dose: String = ""
+    var time: String = ""
+    var isTakenToday: Bool = false
+    var lastResetDate: Date = Date()
 
     init(
         name: String = "",

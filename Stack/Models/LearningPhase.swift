@@ -3,11 +3,11 @@ import SwiftData
 
 @Model
 final class LearningPhase {
-    var order: Int
-    var title: String
-    var durationWeeks: Int
-    @Relationship(deleteRule: .cascade) var weeks: [LearningWeek]
-    var isExpanded: Bool
+    var order: Int = 0
+    var title: String = ""
+    var durationWeeks: Int = 0
+    @Relationship(deleteRule: .cascade) var weeks: [LearningWeek] = []
+    var isExpanded: Bool = false
 
     init(order: Int, title: String, durationWeeks: Int, isExpanded: Bool = false) {
         self.order = order

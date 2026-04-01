@@ -3,11 +3,11 @@ import SwiftData
 
 @Model
 final class Quote {
-    var text: String
-    var author: String
-    var isFavorite: Bool
-    var sortOrder: Int
-    var dateAdded: Date
+    var text: String = ""
+    var author: String = ""
+    var isFavorite: Bool = false
+    var sortOrder: Int = 0
+    var dateAdded: Date = Date()
 
     init(text: String, author: String, sortOrder: Int = 0) {
         self.text = text

@@ -3,9 +3,9 @@ import Foundation
 
 @Model
 final class WeightEntry {
-    var date: Date
-    var pounds: Double
-    var note: String
+    var date: Date = Date()
+    var pounds: Double = 0.0
+    var note: String = ""
 
     init(date: Date = Date(), pounds: Double, note: String = "") {
         self.date = date

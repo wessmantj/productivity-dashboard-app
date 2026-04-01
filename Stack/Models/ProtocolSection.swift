@@ -3,12 +3,12 @@ import Foundation
 
 @Model
 final class ProtocolSection {
-    var id: String
-    var label: String
-    var emoji: String
-    var colorHex: String
-    var sortOrder: Int
-    @Relationship(deleteRule: .cascade) var items: [ProtocolItem]
+    var id: String = ""
+    var label: String = ""
+    var emoji: String = ""
+    var colorHex: String = ""
+    var sortOrder: Int = 0
+    @Relationship(deleteRule: .cascade) var items: [ProtocolItem] = []
 
     init(
         id: String,

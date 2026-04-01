@@ -3,14 +3,14 @@ import SwiftData
 
 @Model
 final class Goal {
-    var title: String
-    var detail: String
-    var category: String
+    var title: String = ""
+    var detail: String = ""
+    var category: String = ""
     var targetDate: Date?
-    var isAchieved: Bool
+    var isAchieved: Bool = false
     var achievedDate: Date?
-    var sortOrder: Int
-    var colorHex: String
+    var sortOrder: Int = 0
+    var colorHex: String = ""
 
     init(title: String, detail: String, category: String,
          targetDate: Date? = nil, sortOrder: Int = 0, colorHex: String = "f59e0b") {

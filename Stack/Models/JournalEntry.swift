@@ -3,12 +3,12 @@ import SwiftData
 
 @Model
 final class JournalEntry {
-    var date: Date
-    var dateKey: String         // "yyyy-MM-dd" for deduplication
-    var body: String
-    var mood: Int               // 1–5
-    var wordCount: Int
-    var tags: [String]
+    var date: Date = Date()
+    var dateKey: String = ""        // "yyyy-MM-dd" for deduplication
+    var body: String = ""
+    var mood: Int = 0               // 1–5
+    var wordCount: Int = 0
+    var tags: [String] = []
 
     init(date: Date = Date(), body: String = "", mood: Int = 3, tags: [String] = []) {
         self.date = date

@@ -3,12 +3,12 @@ import Foundation
 
 @Model
 final class CardioEntry {
-    var date: Date
-    var type: String
-    var durationMinutes: Int
-    var distanceMiles: Double
-    var calories: Int
-    var note: String
+    var date: Date = Date()
+    var type: String = ""
+    var durationMinutes: Int = 0
+    var distanceMiles: Double = 0.0
+    var calories: Int = 0
+    var note: String = ""
 
     init(
         date: Date = Date(),

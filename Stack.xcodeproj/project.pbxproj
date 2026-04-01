@@ -31,6 +31,7 @@
 		8A1ED4C998D3462780439586 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE045E2D17D4F76988C3D2B /* Note.swift */; };
 		8DF6185C96B449CABF479E36 /* Supplement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 321B154A93884DD3A7BFA007 /* Supplement.swift */; };
 		90A92CFD7CA04E8A837F2C8F /* ProtocolItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54906701C5054CD18F1D8D01 /* ProtocolItemRow.swift */; };
+		D3C2B1A0F9E8D7C6B5A4F3E2 /* EditProtocolSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F3A4B5C6D7E8F9A0B1C2D3 /* EditProtocolSheet.swift */; };
 		994EBD89F1D04882A5218165 /* SummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0538E2735414C32AE66C8EB /* SummaryCard.swift */; };
 		A0D078C7A1A547469D8CC40E /* FitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63C7F09649D74F1FA52F86AD /* FitnessView.swift */; };
 		A1B2C3D4E5F607080910A1B2 /* Goal.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F506070809A0B1 /* Goal.swift */; };
@@ -122,6 +123,7 @@
 		51DB427B917043DCB5DBE552 /* AdaptiveNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveNavigationView.swift; sourceTree = "<group>"; };
 		543E8D0A500A48EDA6FBF4D5 /* StackIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackIconView.swift; sourceTree = "<group>"; };
 		54906701C5054CD18F1D8D01 /* ProtocolItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolItemRow.swift; sourceTree = "<group>"; };
+		E2F3A4B5C6D7E8F9A0B1C2D3 /* EditProtocolSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProtocolSheet.swift; sourceTree = "<group>"; };
 		5AE045E2D17D4F76988C3D2B /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
 		5F474781B61A4276A98933A8 /* ProtocolSectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolSectionCard.swift; sourceTree = "<group>"; };
 		5FA754FCB60B47A5959F34B9 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
@@ -382,6 +384,7 @@
 				5F474781B61A4276A98933A8 /* ProtocolSectionCard.swift */,
 				54906701C5054CD18F1D8D01 /* ProtocolItemRow.swift */,
 				E101A1B2C3D4E5F6A7B8C9D0 /* ScheduleView.swift */,
+				E2F3A4B5C6D7E8F9A0B1C2D3 /* EditProtocolSheet.swift */,
 			);
 			path = Protocol;
 			sourceTree = "<group>";
@@ -591,6 +594,7 @@
 				DBFB218691C94255ACCA45A9 /* ProtocolView.swift in Sources */,
 				B112A794089B4867952C6A4B /* ProtocolSectionCard.swift in Sources */,
 				90A92CFD7CA04E8A837F2C8F /* ProtocolItemRow.swift in Sources */,
+				D3C2B1A0F9E8D7C6B5A4F3E2 /* EditProtocolSheet.swift in Sources */,
 				D1A2B3C4D5E601020304B001 /* WeightEntry.swift in Sources */,
 				D1A2B3C4D5E601020304B002 /* SleepEntry.swift in Sources */,
 				D1A2B3C4D5E601020304B003 /* CardioEntry.swift in Sources */,

@@ -3,16 +3,16 @@ import SwiftData
 
 @Model
 final class TaskItem {
-    var title: String
-    var detail: String
-    var isComplete: Bool
-    var priority: Int           // 0 = low, 1 = medium, 2 = high
+    var title: String = ""
+    var detail: String = ""
+    var isComplete: Bool = false
+    var priority: Int = 0           // 0 = low, 1 = medium, 2 = high
     var dueDate: Date?
     var completedDate: Date?
-    var category: String        // "Personal", "Learning", "Work", "Health", "Other"
-    var sortOrder: Int
+    var category: String = ""       // "Personal", "Learning", "Work", "Health", "Other"
+    var sortOrder: Int = 0
     var reminderDate: Date?
-    var hasReminder: Bool
+    var hasReminder: Bool = false
 
     init(title: String, detail: String = "", priority: Int = 1,
          dueDate: Date? = nil, category: String = "Personal",

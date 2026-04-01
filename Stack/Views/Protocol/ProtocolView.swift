@@ -16,6 +16,7 @@ struct ProtocolView: View {
     @State private var collapsedSections: Set<String> = []
     @State private var segment: Segment = .schedule
     @State private var selectedDayOfWeek: Int = todayDow()
+    @State private var showEditSheet = false
 
     // MARK: - Derived
 
@@ -52,6 +53,20 @@ struct ProtocolView: View {
 
                     case .checklist:
                         VStack(spacing: StackTheme.Spacing.sm) {
+                            Button(action: { showEditSheet = true }) {
+                                HStack {
+                                    Image(systemName: "slider.horizontal.3")
+                                    Text("Edit Checklist")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .foregroundStyle(StackTheme.Text.tertiary)
+                                }
+                                .foregroundStyle(StackTheme.Accent.primary)
+                                .font(StackTheme.Typography.body)
+                            }
+                            .padding(.horizontal, StackTheme.Spacing.md)
+                            .padding(.vertical, StackTheme.Spacing.sm)
+
                             checklistContent
                             if isComplete { completionCard }
                         }
@@ -73,6 +88,9 @@ struct ProtocolView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .sheet(isPresented: $showEditSheet) {
+            EditProtocolSheet()
+        }
         .onAppear {
             ProtocolSeedService.seedIfNeeded(in: context)
             ScheduleSeedService.seedIfNeeded(in: context)

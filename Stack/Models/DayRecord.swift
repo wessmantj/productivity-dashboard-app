@@ -3,12 +3,12 @@ import SwiftData
 
 @Model
 final class DayRecord {
-    var dateKey: String        // "yyyy-MM-dd"
-    var protocolRatio: Double  // 0.0–1.0
-    var workoutCompleted: Bool
-    var journalWritten: Bool
-    var learningHours: Double
-    var date: Date
+    var dateKey: String = ""       // "yyyy-MM-dd"
+    var protocolRatio: Double = 0.0  // 0.0–1.0
+    var workoutCompleted: Bool = false
+    var journalWritten: Bool = false
+    var learningHours: Double = 0.0
+    var date: Date = Date()
 
     init(dateKey: String, date: Date = Date()) {
         self.dateKey = dateKey

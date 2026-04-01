@@ -3,10 +3,10 @@ import Foundation
 
 @Model
 final class Note {
-    var id: UUID
-    var title: String
-    var body: String
-    var createdAt: Date
+    var id: UUID = UUID()
+    var title: String = ""
+    var body: String = ""
+    var createdAt: Date = Date()
 
     init(
         id: UUID = UUID(),

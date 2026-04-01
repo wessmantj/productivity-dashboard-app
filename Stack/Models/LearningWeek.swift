@@ -3,15 +3,15 @@ import SwiftData
 
 @Model
 final class LearningWeek {
-    var order: Int
-    var title: String
-    @Relationship(deleteRule: .cascade) var topics: [LearningTopic]
-    var theoryHours: Double
-    var implementationHours: Double
-    var synthesisHours: Double
-    var weeklyHourTarget: Double
-    var isComplete: Bool
-    var notes: String
+    var order: Int = 0
+    var title: String = ""
+    @Relationship(deleteRule: .cascade) var topics: [LearningTopic] = []
+    var theoryHours: Double = 0.0
+    var implementationHours: Double = 0.0
+    var synthesisHours: Double = 0.0
+    var weeklyHourTarget: Double = 0.0
+    var isComplete: Bool = false
+    var notes: String = ""
     var startedDate: Date?
     var completedDate: Date?
 

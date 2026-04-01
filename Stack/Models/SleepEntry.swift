@@ -3,10 +3,10 @@ import Foundation
 
 @Model
 final class SleepEntry {
-    var date: Date
-    var hours: Double
-    var quality: Int    // 1–5 star rating
-    var note: String
+    var date: Date = Date()
+    var hours: Double = 0.0
+    var quality: Int = 0    // 1–5 star rating
+    var note: String = ""
 
     init(date: Date = Date(), hours: Double, quality: Int, note: String = "") {
         self.date = date

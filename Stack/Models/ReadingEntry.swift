@@ -3,14 +3,14 @@ import SwiftData
 
 @Model
 final class ReadingEntry {
-    var title: String
-    var author: String
-    var totalPages: Int
-    var currentPage: Int
-    var dailyGoalPages: Int
-    var startedDate: Date
+    var title: String = ""
+    var author: String = ""
+    var totalPages: Int = 0
+    var currentPage: Int = 0
+    var dailyGoalPages: Int = 0
+    var startedDate: Date = Date()
     var completedDate: Date?
-    var notes: String
+    var notes: String = ""
 
     init(title: String, author: String, totalPages: Int, currentPage: Int = 0,
          dailyGoalPages: Int, startedDate: Date = Date(), notes: String = "") {

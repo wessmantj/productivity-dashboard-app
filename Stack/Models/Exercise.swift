@@ -3,12 +3,12 @@ import Foundation
 
 @Model
 final class Exercise {
-    var name: String
-    var sets: Int
-    var reps: String
-    var weight: String
-    var isCompleted: Bool
-    var sortOrder: Int
+    var name: String = ""
+    var sets: Int = 0
+    var reps: String = ""
+    var weight: String = ""
+    var isCompleted: Bool = false
+    var sortOrder: Int = 0
 
     init(
         name: String = "",

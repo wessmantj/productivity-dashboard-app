@@ -34,10 +34,7 @@ struct StackApp: App {
             ScheduleBlock.self,
             DayRecord.self,
         ])
-        let config = ModelConfiguration(
-            schema: schema,
-            cloudKitDatabase: .private("iCloud.com.travisw.stack")
-        )
+        let config = ModelConfiguration(schema: schema)
         do {
             return try ModelContainer(for: schema, configurations: config)
         } catch {

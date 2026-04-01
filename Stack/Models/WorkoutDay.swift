@@ -3,11 +3,11 @@ import Foundation
 
 @Model
 final class WorkoutDay {
-    var dayOfWeek: Int
-    var muscleGroup: String
-    @Relationship(deleteRule: .cascade) var exercises: [Exercise]
-    var isRestDay: Bool
-    var isCompleted: Bool
+    var dayOfWeek: Int = 0
+    var muscleGroup: String = ""
+    @Relationship(deleteRule: .cascade) var exercises: [Exercise] = []
+    var isRestDay: Bool = false
+    var isCompleted: Bool = false
     var completedDate: Date?
 
     init(
