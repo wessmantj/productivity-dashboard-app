@@ -26,12 +26,4 @@ enum DayRecordService {
     static func updateWorkout(completed: Bool, for dateKey: String, in context: ModelContext) {
         record(for: dateKey, in: context).workoutCompleted = completed
     }
-
-    static func updateJournal(written: Bool, for dateKey: String, in context: ModelContext) {
-        record(for: dateKey, in: context).journalWritten = written
-    }
-
-    static func updateLearning(hours: Double, for dateKey: String, in context: ModelContext) {
-        record(for: dateKey, in: context).learningHours = hours
-    }
 }

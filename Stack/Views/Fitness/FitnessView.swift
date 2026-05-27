@@ -50,7 +50,6 @@ struct FitnessView: View {
             #endif
             .background(StackTheme.Background.base.ignoresSafeArea())
             .onAppear {
-                FitnessSeedService.seedIfNeeded(in: context)
                 viewModel.setup(context: context)
             }
         }

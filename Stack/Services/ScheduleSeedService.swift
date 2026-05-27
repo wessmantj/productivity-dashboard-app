@@ -13,16 +13,165 @@ struct ScheduleSeedService {
     }
 
     static func seedIfNeeded(in context: ModelContext) {
-        guard !UserDefaults.standard.bool(forKey: "scheduleSeedled") else { return }
+        guard !UserDefaults.standard.bool(forKey: "scheduleSummerV1Seeded") else { return }
+        clearAll(in: context)
+        seed(in: context)
+        UserDefaults.standard.set(true, forKey: "scheduleSummerV1Seeded")
+    }
 
-        let allDays: [[B]] = [
-            monday, tuesday, wednesday, thursday, friday, saturday, sunday
+    static func seedBlockItemsIfNeeded(in context: ModelContext) {
+        guard !UserDefaults.standard.bool(forKey: "blockItemsSummerV1Seeded") else { return }
+        guard let blocks = try? context.fetch(FetchDescriptor<ScheduleBlock>()) else { return }
+        for block in blocks {
+            let titles = itemTitles(for: block)
+            for (i, title) in titles.enumerated() {
+                let item = BlockItem()
+                item.title = title
+                item.sortOrder = i
+                item.parentBlock = block
+                context.insert(item)
+            }
+        }
+        try? context.save()
+        UserDefaults.standard.set(true, forKey: "blockItemsSummerV1Seeded")
+    }
+
+    private static func itemTitles(for block: ScheduleBlock) -> [String] {
+        let label = block.label
+        let day   = block.dayOfWeek
+
+        if label == "Posture + neck lengthening — 10 min" && (2...6).contains(day) {
+            return postureItems
+        }
+        if label == "Breakfast + AM supplements" {
+            return breakfastItems
+        }
+        if label == "Shower + AM skincare + minox" {
+            return amSkincareItems
+        }
+        if label.contains("PM skincare") && (2...6).contains(day) {
+            return pmSkincareItems
+        }
+        if label == "Dinner + PM supplements" && day == 2 {
+            return dinnerBaseItems
+        }
+        if label.contains("journal") && label.contains("debrief") && (3...6).contains(day) {
+            return dinnerJournalItems
+        }
+        if label == "Dinner" && (day == 7 || day == 1) {
+            return dinnerBaseItems
+        }
+        if label == "Sunday Review — money / weight / career / gratitude" && day == 1 {
+            return sundayReviewItems
+        }
+        if isWindDownHost(label: label, day: day) {
+            if label == "Extended stretch + neck endurance" && day == 5 {
+                return neckItems + bedtimeItems
+            }
+            return bedtimeItems
+        }
+        return []
+    }
+
+    private static func isWindDownHost(label: String, day: Int) -> Bool {
+        switch day {
+        case 2: return label == "Stretch + wind down"
+        case 3: return label == "Stretch + wind down"
+        case 4: return label == "Stretch + wind down"
+        case 5: return label == "Extended stretch + neck endurance"
+        case 6: return label == "Wind down"
+        case 7: return label == "Wind down + read"
+        case 1: return label == "Wind down"
+        default: return false
+        }
+    }
+
+    private static let postureItems = [
+        "Foam roller thoracic extensions — 1 min",
+        "Doorway pec stretch — 30 sec × 2/side",
+        "Suboccipital release — 1 min/side",
+        "Levator scapulae stretch — 30 sec/side",
+        "Upper trap stretch — 30 sec/side",
+        "Scalene stretch — 30 sec/side",
+        "Wall chin tucks — 2×15, 5 sec holds",
+        "Crown lift hold — 1 min",
+    ]
+
+    private static let breakfastItems = [
+        "Eat breakfast",
+        "Creatine 5g",
+        "Vitamin D3 2000 IU",
+        "Rhodiola 200–400mg",
+    ]
+
+    private static let amSkincareItems = [
+        "Shower",
+        "Vitamin C serum",
+        "Hyaluronic acid",
+        "CeraVe SPF 30",
+        "Minoxidil 1mL to hairline corners",
+    ]
+
+    private static let pmSkincareItems = [
+        "Cleanser",
+        "Hyaluronic acid or Tretinoin (per ramp schedule)",
+        "Moisturizer (LRP Double Repair on tret nights)",
+        "Eye cream",
+        "Minoxidil 1mL",
+    ]
+
+    private static let dinnerBaseItems = [
+        "Eat dinner",
+        "Ashwagandha KSM-66 300mg",
+    ]
+
+    private static let dinnerJournalItems = [
+        "Eat dinner",
+        "Ashwagandha KSM-66 300mg",
+        "Journal interaction debrief (5 min)",
+    ]
+
+    private static let bedtimeItems = [
+        "Magnesium Glycinate 300–400mg",
+        "Glycine 3g",
+        "L-Theanine 200mg",
+        "Mouth tape prep",
+    ]
+
+    private static let neckItems = [
+        "Neck Curls 2×20",
+        "Neck Extensions 2×20",
+        "Lateral flex 2×20",
+    ]
+
+    private static let sundayReviewItems = [
+        "Money review (15 min) — spending, CC, net worth, paycheck plan",
+        "Weight progression + photo comparison (15 min)",
+        "Sensata / return-offer momentum (20 min)",
+        "Gratitude entry + week intentions (10 min)",
+    ]
+
+    private static func clearAll(in context: ModelContext) {
+        if let blocks = try? context.fetch(FetchDescriptor<ScheduleBlock>()) {
+            blocks.forEach { context.delete($0) }
+        }
+    }
+
+    private static func seed(in context: ModelContext) {
+        // Calendar.weekday: 1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat
+        let schedule: [(dayOfWeek: Int, blocks: [B])] = [
+            (2, monday),
+            (3, tuesday),
+            (4, wednesday),
+            (5, thursday),
+            (6, friday),
+            (7, saturday),
+            (1, sunday),
         ]
-
-        for (dow, blocks) in allDays.enumerated() {
+        for (dayOfWeek, blocks) in schedule {
             for (order, b) in blocks.enumerated() {
                 context.insert(ScheduleBlock(
-                    dayOfWeek: dow,
+                    dayOfWeek: dayOfWeek,
                     time: b.time,
                     label: b.label,
                     category: b.category,
@@ -30,164 +179,170 @@ struct ScheduleSeedService {
                 ))
             }
         }
-
-        UserDefaults.standard.set(true, forKey: "scheduleSeedled")
     }
 
-    // MARK: — Monday (0)
+    // MARK: — Monday (2) — PD Day, Push
 
     private static let monday: [B] = [
-        B("6:00",  "Wake — water, sunlight",                        "morning"),
-        B("6:10",  "Shower + AM skincare + dressed",                 "morning"),
-        B("6:40",  "Breakfast",                                      "morning"),
-        B("6:55",  "Stretch + posture + treadmill walk",             "body"),
-        B("7:30",  "Supplements, pack bag, leave",                   "morning"),
-        B("7:50",  "Commute — speaking practice",                    "commute"),
-        B("8:10",  "On campus — review notes",                       "class"),
-        B("9:00",  "DION 115",                                       "class"),
-        B("10:00", "LIB 205",                                        "class"),
-        B("11:00", "Deep work — coding / ML / coursework",           "deepwork"),
-        B("12:00", "DION 116",                                       "class"),
-        B("1:00",  "Deep work — coding / ML / coursework",           "deepwork"),
-        B("2:00",  "LIB 205",                                        "class"),
-        B("3:00",  "CITS — deep work block",                         "deepwork"),
-        B("7:00",  "Leave campus → gym (14 min)",                    "commute"),
-        B("7:15",  "Gym — weight training (75 min)",                 "gym"),
-        B("8:30",  "Leave gym → home (24 min)",                      "commute"),
-        B("8:54",  "Home — PM skincare + supplements",               "evening"),
-        B("9:15",  "Dinner",                                         "evening"),
-        B("9:45",  "Treadmill + stretch + posture work",             "body"),
-        B("10:30", "Sleep",                                          "sleep"),
+        B("6:00 AM",  "Wake — water, sunlight",                    "Morning"),
+        B("6:05 AM",  "AM walk — 25 min, fasted",                  "Recovery"),
+        B("6:30 AM",  "Shower + AM skincare + minox",               "Morning"),
+        B("6:55 AM",  "Breakfast + AM supplements",                 "Nutrition"),
+        B("7:15 AM",  "Posture + neck lengthening — 10 min",        "Recovery"),
+        B("7:25 AM",  "Read aloud — 10 min",                        "ML"),
+        B("7:35 AM",  "ML morning theory — 45 min",                 "ML"),
+        B("8:20 AM",  "PD block",                                   "Work"),
+        B("12:00 PM", "Lunch + physiological sigh breathwork",      "Nutrition"),
+        B("1:00 PM",  "ML deep work — 3–4 hr",                      "ML"),
+        B("5:15 PM",  "Drive to gym",                               "Fitness"),
+        B("5:40 PM",  "Lift — Push (60 min)",                       "Fitness"),
+        B("7:05 PM",  "Home, PM skincare + minox",                  "Evening"),
+        B("7:20 PM",  "Dinner + PM supplements",                    "Nutrition"),
+        B("8:05 PM",  "Personal / free time",                       "Personal"),
+        B("9:30 PM",  "Stretch + wind down",                        "Evening"),
+        B("10:00 PM", "Read 10 pages",                              "Personal"),
+        B("10:30 PM", "Sleep",                                      "Evening"),
     ]
 
-    // MARK: — Tuesday (1)
+    // MARK: — Tuesday (3) — Internship 9–3, Pull
 
     private static let tuesday: [B] = [
-        B("6:00",  "Wake — water, sunlight",                        "morning"),
-        B("6:10",  "Shower + AM skincare + dressed",                 "morning"),
-        B("6:40",  "Breakfast",                                      "morning"),
-        B("6:55",  "Stretch + posture work (15 min)",                "body"),
-        B("7:10",  "Supplements, pack bag, leave",                   "morning"),
-        B("7:10",  "Commute — speaking practice",                    "commute"),
-        B("7:30",  "CITS — deep work block",                         "deepwork"),
-        B("9:30",  "SENG 331",                                       "class"),
-        B("12:15", "Lunch + decompress",                             "free"),
-        B("1:00",  "CITS — deep work block",                         "deepwork"),
-        B("5:00",  "Leave campus → gym (14 min)",                    "commute"),
-        B("5:14",  "Gym — weight training (75 min)",                 "gym"),
-        B("6:30",  "Leave gym → home (24 min)",                      "commute"),
-        B("6:54",  "Home — PM skincare + supplements",               "evening"),
-        B("7:15",  "Dinner",                                         "evening"),
-        B("7:45",  "Decompress — free time",                         "free"),
-        B("9:00",  "Treadmill + stretch + posture work",             "body"),
-        B("9:50",  "Wind down — light reading",                      "evening"),
-        B("10:30", "Sleep",                                          "sleep"),
+        B("6:00 AM",  "Wake — water, sunlight",                    "Morning"),
+        B("6:05 AM",  "AM walk — 25 min, fasted",                  "Recovery"),
+        B("6:30 AM",  "Shower + AM skincare + minox",               "Morning"),
+        B("6:55 AM",  "Breakfast + AM supplements",                 "Nutrition"),
+        B("7:15 AM",  "Posture + neck lengthening — 10 min",        "Recovery"),
+        B("7:25 AM",  "Read aloud — 10 min",                        "ML"),
+        B("7:35 AM",  "ML morning theory — 45 min",                 "ML"),
+        B("8:20 AM",  "Commute to NBRR — 40 min",                   "Work"),
+        B("9:00 AM",  "Internship",                                 "Work"),
+        B("12:00 PM", "Lunch + physiological sigh breathwork",      "Nutrition"),
+        B("3:00 PM",  "End work — commute home",                    "Work"),
+        B("3:45 PM",  "ML afternoon block — 1.5 hr",                "ML"),
+        B("5:15 PM",  "Drive to gym",                               "Fitness"),
+        B("5:40 PM",  "Lift — Pull (60 min)",                       "Fitness"),
+        B("7:05 PM",  "Home, PM skincare + minox",                  "Evening"),
+        B("7:20 PM",  "Dinner + journal interaction debrief",        "Nutrition"),
+        B("8:05 PM",  "Conversational / personal block — 1 hr",     "Personal"),
+        B("9:05 PM",  "Stretch + wind down",                        "Evening"),
+        B("9:45 PM",  "Read 10 pages",                              "Personal"),
+        B("10:30 PM", "Sleep",                                      "Evening"),
     ]
 
-    // MARK: — Wednesday (2)
+    // MARK: — Wednesday (4) — Internship 9–5 in-person, Lower
 
     private static let wednesday: [B] = [
-        B("6:00",  "Wake — water, sunlight",                        "morning"),
-        B("6:10",  "Shower + AM skincare + dressed",                 "morning"),
-        B("6:40",  "Breakfast",                                      "morning"),
-        B("7:00",  "Supplements, pack bag, leave",                   "morning"),
-        B("7:20",  "Commute — speaking practice",                    "commute"),
-        B("8:10",  "On campus — review notes",                       "class"),
-        B("9:00",  "DION 115",                                       "class"),
-        B("10:00", "LIB 205",                                        "class"),
-        B("11:00", "Light deep work — coursework review",            "deepwork"),
-        B("12:00", "DION 116",                                       "class"),
-        B("1:00",  "Light deep work — coursework review",            "deepwork"),
-        B("2:00",  "LIB 205",                                        "class"),
-        B("3:00",  "DION 311",                                       "class"),
-        B("5:00",  "CITS — deep work block",                         "deepwork"),
-        B("7:00",  "Leave campus → gym (14 min)",                    "commute"),
-        B("7:14",  "Gym — weight training (75 min)",                 "gym"),
-        B("8:30",  "Leave gym → home (24 min)",                      "commute"),
-        B("8:54",  "Home — PM skincare + supplements",               "evening"),
-        B("9:15",  "Dinner",                                         "evening"),
-        B("9:45",  "Treadmill + stretch + posture work",             "body"),
-        B("10:30", "Sleep",                                          "sleep"),
+        B("6:00 AM",  "Wake — water, sunlight",                    "Morning"),
+        B("6:05 AM",  "AM walk — 25 min, fasted",                  "Recovery"),
+        B("6:30 AM",  "Shower + AM skincare + minox",               "Morning"),
+        B("6:55 AM",  "Breakfast + AM supplements",                 "Nutrition"),
+        B("7:15 AM",  "Posture + neck lengthening — 10 min",        "Recovery"),
+        B("7:25 AM",  "Read aloud — 10 min",                        "ML"),
+        B("7:35 AM",  "ML morning theory — 45 min",                 "ML"),
+        B("8:20 AM",  "Commute to NBRR — 40 min",                   "Work"),
+        B("9:00 AM",  "Internship (full day with Andrew)",           "Work"),
+        B("12:00 PM", "Lunch + physiological sigh breathwork",      "Nutrition"),
+        B("5:00 PM",  "End work — commute home",                    "Work"),
+        B("5:45 PM",  "Drive to gym",                               "Fitness"),
+        B("6:10 PM",  "Lift — Lower (60 min)",                      "Fitness"),
+        B("7:35 PM",  "Home, PM skincare + minox",                  "Evening"),
+        B("7:50 PM",  "Dinner + journal debrief",                   "Nutrition"),
+        B("8:35 PM",  "Decompress / social / personal",             "Personal"),
+        B("9:30 PM",  "Stretch + wind down",                        "Evening"),
+        B("9:50 PM",  "Read 10 pages",                              "Personal"),
+        B("10:30 PM", "Sleep",                                      "Evening"),
     ]
 
-    // MARK: — Thursday (3)
+    // MARK: — Thursday (5) — Internship 9–2, REST day
 
     private static let thursday: [B] = [
-        B("6:00",  "Wake — water, sunlight",                                       "morning"),
-        B("6:10",  "Shower + AM skincare + dressed",                                "morning"),
-        B("6:40",  "Breakfast",                                                     "morning"),
-        B("6:55",  "Treadmill walk (25 min)",                                       "body"),
-        B("7:20",  "Deep work block 1 — Theory (reading, math, primary sources)",   "deepwork"),
-        B("10:00", "Break — walk, snack",                                           "free"),
-        B("10:15", "Deep work block 2 — Implementation (no AI)",                    "deepwork"),
-        B("1:00",  "Lunch — real break, step outside",                              "free"),
-        B("2:00",  "Deep work block 3 — Implementation continued",                  "deepwork"),
-        B("4:30",  "Synthesis — plain English writeup, update repo",                "deepwork"),
-        B("5:30",  "Dinner + decompress",                                           "free"),
-        B("6:15",  "Leave → gym (24 min)",                                          "commute"),
-        B("6:39",  "Gym — weight training (75 min)",                                "gym"),
-        B("7:54",  "Leave gym → home (24 min)",                                     "commute"),
-        B("8:18",  "Home — PM skincare + supplements",                              "evening"),
-        B("8:35",  "Wind down",                                                     "evening"),
-        B("9:00",  "Stretch + posture work (30 min)",                               "body"),
-        B("9:30",  "Light reading",                                                 "evening"),
-        B("10:30", "Sleep",                                                         "sleep"),
+        B("6:00 AM",  "Wake — water, sunlight",                         "Morning"),
+        B("6:05 AM",  "AM walk — 25 min, fasted",                       "Recovery"),
+        B("6:30 AM",  "Shower + AM skincare + minox",                    "Morning"),
+        B("6:55 AM",  "Breakfast + AM supplements",                      "Nutrition"),
+        B("7:15 AM",  "Posture + neck lengthening — 10 min",             "Recovery"),
+        B("7:25 AM",  "Read aloud — 10 min",                             "ML"),
+        B("7:35 AM",  "ML morning theory — 45 min",                      "ML"),
+        B("8:20 AM",  "Commute to NBRR — 40 min",                        "Work"),
+        B("9:00 AM",  "Internship",                                      "Work"),
+        B("12:00 PM", "Lunch + physiological sigh breathwork",           "Nutrition"),
+        B("2:00 PM",  "End work — commute home",                         "Work"),
+        B("2:45 PM",  "Lunch + decompress",                              "Nutrition"),
+        B("3:15 PM",  "ML deep work — 3 hr (biggest ML day)",            "ML"),
+        B("6:15 PM",  "Dinner + journal debrief",                        "Nutrition"),
+        B("7:00 PM",  "Career block — networking / LinkedIn / applications", "Career"),
+        B("8:00 PM",  "Personal / creative",                             "Personal"),
+        B("9:00 PM",  "Extended stretch + neck endurance",               "Recovery"),
+        B("9:45 PM",  "Read 10 pages",                                   "Personal"),
+        B("10:30 PM", "Sleep",                                           "Evening"),
     ]
 
-    // MARK: — Friday (4)
+    // MARK: — Friday (6) — Internship 9–1, Upper
 
     private static let friday: [B] = [
-        B("6:00",  "Wake — water, sunlight",                        "morning"),
-        B("6:10",  "Shower + AM skincare + dressed",                 "morning"),
-        B("6:40",  "Breakfast",                                      "morning"),
-        B("7:00",  "Supplements, pack bag, leave",                   "morning"),
-        B("7:20",  "Commute — speaking practice",                    "commute"),
-        B("8:10",  "On campus — review notes",                       "class"),
-        B("9:00",  "DION 115",                                       "class"),
-        B("10:00", "LIB 205",                                        "class"),
-        B("11:00", "Deep work — coding / ML",                        "deepwork"),
-        B("12:00", "DION 116",                                       "class"),
-        B("1:00",  "Deep work — coding / ML",                        "deepwork"),
-        B("2:00",  "LIB 205",                                        "class"),
-        B("3:00",  "CITS — deep work block",                         "deepwork"),
-        B("5:00",  "Leave campus → gym (14 min)",                    "commute"),
-        B("5:14",  "Gym — weight training (75 min)",                 "gym"),
-        B("6:30",  "Leave gym → home (24 min)",                      "commute"),
-        B("6:54",  "Home — PM skincare + supplements",               "evening"),
-        B("7:15",  "Dinner",                                         "evening"),
-        B("7:45",  "Free time — friends, games, creative outlet",    "free"),
-        B("9:00",  "Treadmill + stretch + posture work",             "body"),
-        B("9:45",  "Wind down",                                      "evening"),
-        B("10:30", "Sleep",                                          "sleep"),
+        B("6:00 AM",  "Wake — water, sunlight",                    "Morning"),
+        B("6:05 AM",  "AM walk — 25 min, fasted",                  "Recovery"),
+        B("6:30 AM",  "Shower + AM skincare + minox",               "Morning"),
+        B("6:55 AM",  "Breakfast + AM supplements",                 "Nutrition"),
+        B("7:15 AM",  "Posture + neck lengthening — 10 min",        "Recovery"),
+        B("7:25 AM",  "Read aloud — 10 min",                        "ML"),
+        B("7:35 AM",  "ML morning theory — 45 min",                 "ML"),
+        B("8:20 AM",  "Commute to NBRR — 40 min",                   "Work"),
+        B("9:00 AM",  "Internship",                                 "Work"),
+        B("12:00 PM", "Lunch + physiological sigh breathwork",      "Nutrition"),
+        B("1:00 PM",  "End work — commute home",                    "Work"),
+        B("1:45 PM",  "Lunch",                                      "Nutrition"),
+        B("2:15 PM",  "ML afternoon block — 2 hr",                  "ML"),
+        B("4:15 PM",  "Drive to gym",                               "Fitness"),
+        B("4:40 PM",  "Lift — Upper blend (60 min)",                "Fitness"),
+        B("6:05 PM",  "Home, PM skincare + minox",                  "Evening"),
+        B("6:20 PM",  "Dinner + journal debrief",                   "Nutrition"),
+        B("7:05 PM",  "Side income block — 1 hr",                   "Career"),
+        B("8:05 PM",  "Protected free time — friends / games / creative", "Personal"),
+        B("10:00 PM", "Wind down",                                  "Evening"),
+        B("10:30 PM", "Sleep",                                      "Evening"),
     ]
 
-    // MARK: — Saturday (5)
+    // MARK: — Saturday (7) — Lift + ML + social anchor
 
     private static let saturday: [B] = [
-        B("6:30",   "Wake — water, sunlight",                            "morning"),
-        B("6:40",   "Shower + AM skincare + dressed",                     "morning"),
-        B("7:10",   "Breakfast",                                          "morning"),
-        B("7:30",   "Leave → gym (24 min)",                               "commute"),
-        B("7:54",   "Gym — weight training (75–90 min)",                  "gym"),
-        B("9:30",   "Leave gym → home",                                   "commute"),
-        B("9:54",   "Home — decompress",                                  "free"),
-        B("10:30",  "Anchor task — errands / groceries / room",           "deepwork"),
-        B("12:30",  "Free day — friends, adventure, creative outlet",     "free"),
-        B("9:00pm", "Treadmill + stretch + posture work",                 "body"),
-        B("9:45pm", "Wind down",                                          "evening"),
-        B("10:30pm","Sleep",                                              "sleep"),
+        B("7:00 AM",  "Wake — water, sunlight",                          "Morning"),
+        B("7:15 AM",  "AM walk — 30 min",                                "Recovery"),
+        B("7:45 AM",  "Shower + AM skincare + minox",                     "Morning"),
+        B("8:15 AM",  "Breakfast + AM supplements",                       "Nutrition"),
+        B("8:45 AM",  "Drive to gym",                                     "Fitness"),
+        B("9:10 AM",  "Lift — Posterior + Abs (75–90 min)",               "Fitness"),
+        B("11:10 AM", "Home, refuel (high protein)",                      "Nutrition"),
+        B("11:30 AM", "ML deep work — 2.5 hr + 1 paper read",             "ML"),
+        B("2:00 PM",  "Lunch",                                            "Nutrition"),
+        B("2:30 PM",  "Career power hour — application + LinkedIn",       "Career"),
+        B("4:00 PM",  "Protected free block — social anchor / creative",  "Personal"),
+        B("7:00 PM",  "Dinner",                                           "Nutrition"),
+        B("9:00 PM",  "Stretch + posture",                                "Recovery"),
+        B("9:45 PM",  "Wind down + read",                                 "Personal"),
+        B("10:30 PM", "Sleep",                                            "Evening"),
     ]
 
-    // MARK: — Sunday (6)
+    // MARK: — Sunday (1) — Rest + Synthesis + Plan
 
     private static let sunday: [B] = [
-        B("Variable", "Wake when ready — morning routine before leaving", "morning"),
-        B("All day",  "F&F Delivery",                                      "deepwork"),
-        B("8:00pm",   "Weekly review — 5 sectors check-in (15 min)",       "deepwork"),
-        B("8:15pm",   "Prepare for week — bag packed, intentions set",      "morning"),
-        B("9:00pm",   "Treadmill + full stretch + posture work (45 min)",   "body"),
-        B("9:45pm",   "PM skincare + supplements",                          "evening"),
-        B("10:00pm",  "Wind down — light reading",                          "evening"),
-        B("10:30pm",  "Sleep",                                              "sleep"),
+        B("7:00 AM",  "Wake — water, sunlight",                              "Morning"),
+        B("7:05 AM",  "Weigh-in + progress photo",                           "Recovery"),
+        B("7:15 AM",  "30 min solitude — coffee, journal, no phone",          "Personal"),
+        B("7:45 AM",  "Long walk — 45 min",                                   "Recovery"),
+        B("8:30 AM",  "Breakfast + AM supplements",                           "Nutrition"),
+        B("9:00 AM",  "Weekly call to friend or family",                      "Personal"),
+        B("10:00 AM", "Free morning",                                         "Personal"),
+        B("12:00 PM", "Lunch",                                                "Nutrition"),
+        B("1:00 PM",  "Meal prep — 90 min",                                   "Nutrition"),
+        B("2:30 PM",  "ML synthesis writeup — 2 hr (non-negotiable)",         "ML"),
+        B("4:30 PM",  "Free time",                                            "Personal"),
+        B("6:00 PM",  "Dinner",                                               "Nutrition"),
+        B("7:00 PM",  "Sunday Review — money / weight / career / gratitude",  "Career"),
+        B("8:00 PM",  "Light reading",                                        "Personal"),
+        B("9:00 PM",  "Extended stretch + full posture sequence — 30 min",    "Recovery"),
+        B("9:45 PM",  "PM skincare + PM supplements",                         "Evening"),
+        B("10:00 PM", "Wind down",                                            "Evening"),
+        B("10:30 PM", "Sleep",                                                "Evening"),
     ]
 }

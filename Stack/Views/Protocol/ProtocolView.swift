@@ -3,82 +3,29 @@ import SwiftData
 
 struct ProtocolView: View {
 
-    enum Segment: String, CaseIterable {
-        case schedule  = "Schedule"
-        case checklist = "Checklist"
-        case progress  = "Progress"
-    }
-
     @Environment(\.modelContext) private var context
-    @Query(sort: \ProtocolSection.sortOrder) private var sections: [ProtocolSection]
+    @Query private var allBlocks: [ScheduleBlock]
 
     @State private var viewModel = ProtocolViewModel()
-    @State private var collapsedSections: Set<String> = []
-    @State private var segment: Segment = .schedule
-    @State private var selectedDayOfWeek: Int = todayDow()
     @State private var showEditSheet = false
 
-    // MARK: - Derived
-
-    private var totalItems: Int {
-        sections.reduce(0) { $0 + $1.items.count }
-    }
-
-    private var isComplete: Bool {
-        totalItems > 0 && viewModel.completedCount >= totalItems
-    }
-
-    private var progressColor: Color {
-        let r = viewModel.completionRatio
-        if r > 0.8 { return StackTheme.Accent.positive }
-        if r > 0.4 { return StackTheme.Accent.warning }
-        return StackTheme.Accent.negative
-    }
+    // Mon-first display with corresponding Calendar.weekday values (1=Sun, 2=Mon…7=Sat)
+    private static let dayLabels   = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    private static let dayWeekdays = [2, 3, 4, 5, 6, 7, 1]
 
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
-            // Sticky header
-            stickyHeader
+            headerArea
                 .background(StackTheme.Background.base)
-
             ScrollView {
                 VStack(spacing: StackTheme.Spacing.sm) {
-                    switch segment {
-                    case .schedule:
-                        ScheduleView(dayOfWeek: selectedDayOfWeek)
-                            .padding(.horizontal, StackTheme.Spacing.md)
-                            .padding(.vertical, StackTheme.Spacing.md)
-
-                    case .checklist:
-                        VStack(spacing: StackTheme.Spacing.sm) {
-                            Button(action: { showEditSheet = true }) {
-                                HStack {
-                                    Image(systemName: "slider.horizontal.3")
-                                    Text("Edit Checklist")
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .foregroundStyle(StackTheme.Text.tertiary)
-                                }
-                                .foregroundStyle(StackTheme.Accent.primary)
-                                .font(StackTheme.Typography.body)
-                            }
-                            .padding(.horizontal, StackTheme.Spacing.md)
-                            .padding(.vertical, StackTheme.Spacing.sm)
-
-                            checklistContent
-                            if isComplete { completionCard }
-                        }
-                        .padding(.horizontal, StackTheme.Spacing.md)
-                        .padding(.vertical, StackTheme.Spacing.md)
-
-                    case .progress:
-                        progressContent
-                            .padding(.horizontal, StackTheme.Spacing.md)
-                            .padding(.vertical, StackTheme.Spacing.md)
-                    }
+                    blockList
+                    editButton
                 }
+                .padding(.horizontal, StackTheme.Spacing.md)
+                .padding(.vertical, StackTheme.Spacing.md)
                 .frame(maxWidth: 600)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -89,81 +36,55 @@ struct ProtocolView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .sheet(isPresented: $showEditSheet) {
-            EditProtocolSheet()
+            EditScheduleSheet(selectedDay: viewModel.selectedDay)
         }
         .onAppear {
-            ProtocolSeedService.seedIfNeeded(in: context)
-            ScheduleSeedService.seedIfNeeded(in: context)
-            selectedDayOfWeek = Self.todayDow()
-            viewModel.setup(context: context)
-            viewModel.totalItems = totalItems
-        }
-        .onChange(of: totalItems) { _, new in
-            viewModel.totalItems = new
-        }
-        .onChange(of: isComplete) { _, complete in
-            guard complete else { return }
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            #endif
+            viewModel.selectedDay = Calendar.current.component(.weekday, from: Date())
         }
     }
 
-    // MARK: - Sticky header
+    // MARK: - Header
 
-    private var stickyHeader: some View {
+    private var headerArea: some View {
         VStack(spacing: StackTheme.Spacing.sm) {
-            // Date + completion %
-            HStack(alignment: .firstTextBaseline) {
-                Text(viewModel.displayDateFull)
+            dayPicker
+            let counts = viewModel.completionCount(for: viewModel.selectedDay, from: allBlocks)
+            let ratio = counts.total > 0 ? Double(counts.completed) / Double(counts.total) : 0.0
+            HStack {
+                Text("\(counts.completed) of \(counts.total) complete")
                     .font(StackTheme.Typography.caption)
                     .foregroundStyle(StackTheme.Text.secondary)
                 Spacer()
-                Text(String(format: "%.0f%%", viewModel.completionRatio * 100))
-                    .font(StackTheme.Typography.stat)
-                    .foregroundStyle(StackTheme.Text.primary)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .animation(.easeOut(duration: 0.4), value: viewModel.completionRatio)
             }
-
-            StackProgressBar(
-                value: viewModel.completionRatio,
-                color: progressColor,
-                height: 6,
-                animated: true
-            )
-
-            // 7-day Mon–Sun picker
-            dayPicker
-
-            // Segment picker
-            segmentPicker
+            StackProgressBar(value: ratio, color: progressColor(ratio), height: 6, animated: true)
         }
         .padding(.horizontal, StackTheme.Spacing.md)
         .padding(.top, StackTheme.Spacing.md)
         .padding(.bottom, StackTheme.Spacing.sm)
     }
 
-    // MARK: - Day picker (Mon–Sun)
+    private func progressColor(_ ratio: Double) -> Color {
+        if ratio > 0.8 { return StackTheme.Accent.positive }
+        if ratio > 0.4 { return StackTheme.Accent.warning }
+        return StackTheme.Accent.negative
+    }
 
-    private static let dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    // MARK: - Day picker
 
     private var dayPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: StackTheme.Spacing.xs) {
-                ForEach(0..<7, id: \.self) { dow in
+                ForEach(0..<7, id: \.self) { i in
+                    let weekday = Self.dayWeekdays[i]
                     Button {
                         withAnimation(.spring(duration: 0.25)) {
-                            selectedDayOfWeek = dow
-                            viewModel.selectOffset(dow - Self.todayDow())
+                            viewModel.selectedDay = weekday
                         }
                     } label: {
                         StackBadge(
-                            text: Self.dayLabels[dow],
+                            text: Self.dayLabels[i],
                             color: StackTheme.Accent.primary,
-                            style: selectedDayOfWeek == dow ? .filled : .subtle
+                            style: viewModel.selectedDay == weekday ? .filled : .subtle
                         )
                     }
                     .buttonStyle(.plain)
@@ -173,128 +94,226 @@ struct ProtocolView: View {
         }
     }
 
-    // MARK: - Segment picker
-
-    private var segmentPicker: some View {
-        HStack(spacing: StackTheme.Spacing.sm) {
-            ForEach(Segment.allCases, id: \.self) { seg in
-                Button { withAnimation(.spring(duration: 0.2)) { segment = seg } } label: {
-                    StackBadge(
-                        text: seg.rawValue,
-                        color: StackTheme.Accent.primary,
-                        style: segment == seg ? .filled : .subtle
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer()
-        }
-    }
-
-    // MARK: - Checklist content
+    // MARK: - Block list
 
     @ViewBuilder
-    private var checklistContent: some View {
-        ForEach(sections) { section in
-            ProtocolSectionCard(
-                section: section,
-                completedIDs: viewModel.completedItems,
-                isCollapsed: collapsedSections.contains(section.id),
-                onToggleCollapse: {
-                    if collapsedSections.contains(section.id) {
-                        collapsedSections.remove(section.id)
-                    } else {
-                        collapsedSections.insert(section.id)
-                    }
-                },
-                onToggleItem: { viewModel.toggle(itemID: $0) }
+    private var blockList: some View {
+        let dayBlocks = viewModel.blocks(for: viewModel.selectedDay, from: allBlocks)
+        let isToday = viewModel.selectedDay == Calendar.current.component(.weekday, from: Date())
+        let currentID = isToday ? viewModel.currentBlockID(for: dayBlocks) : nil
+
+        if dayBlocks.isEmpty {
+            ContentUnavailableView(
+                "No schedule",
+                systemImage: "calendar",
+                description: Text("No blocks scheduled for this day.")
             )
-        }
-    }
-
-    // MARK: - Progress content
-
-    private var progressContent: some View {
-        VStack(spacing: StackTheme.Spacing.sm) {
-            // Overall stat
-            StackCard(elevated: true) {
-                VStack(spacing: 4) {
-                    Text(String(format: "%.0f%%", viewModel.completionRatio * 100))
-                        .font(StackTheme.Typography.stat)
-                        .foregroundStyle(progressColor)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                    Text("\(viewModel.completedCount) of \(totalItems) completed")
-                        .font(StackTheme.Typography.caption)
-                        .foregroundStyle(StackTheme.Text.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, StackTheme.Spacing.md)
-            }
-
-            // Per-section breakdown
-            ForEach(sections) { section in
-                sectionProgressRow(section)
-            }
-
-            if isComplete { completionCard }
-        }
-    }
-
-    private func sectionProgressRow(_ section: ProtocolSection) -> some View {
-        let done = section.items.filter { viewModel.completedItems.contains($0.id) }.count
-        let total = section.items.count
-        let ratio = total > 0 ? Double(done) / Double(total) : 0.0
-        return StackCard {
-            HStack(spacing: StackTheme.Spacing.sm) {
-                Text(section.emoji).font(.body)
-                Text(section.label)
-                    .font(StackTheme.Typography.caption2)
-                    .foregroundStyle(StackTheme.Text.secondary)
-                    .lineLimit(1)
-                Spacer()
-                StackProgressBar(
-                    value: ratio,
-                    color: ratio >= 1 ? StackTheme.Accent.positive : StackTheme.Accent.primary,
-                    height: 4
-                )
-                .frame(width: 60)
-                Text("\(done)/\(total)")
-                    .font(StackTheme.Typography.caption)
-                    .foregroundStyle(ratio >= 1 ? StackTheme.Accent.positive : StackTheme.Text.secondary)
-                    .monospacedDigit()
-            }
-        }
-    }
-
-    // MARK: - Completion card
-
-    private var completionCard: some View {
-        StackCard(elevated: true) {
-            VStack(spacing: StackTheme.Spacing.sm) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(StackTheme.Accent.positive)
-                Text("Protocol Complete")
-                    .font(StackTheme.Typography.title)
-                    .foregroundStyle(StackTheme.Accent.positive)
-                Text("nothing matters, so i'm playing life like a video game. and i'm winning.")
-                    .font(StackTheme.Typography.caption.italic())
-                    .foregroundStyle(StackTheme.Text.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
             .padding(.vertical, StackTheme.Spacing.xl)
+        } else {
+            ForEach(dayBlocks) { block in
+                blockRow(block, isCurrent: currentID != nil && block.persistentModelID == currentID)
+            }
         }
-        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+    }
+
+    // MARK: - Block row
+
+    private func blockRow(_ block: ScheduleBlock, isCurrent: Bool) -> some View {
+        let isExpanded = viewModel.expandedBlockIDs.contains(block.id)
+        let sortedItems = block.items.sorted { $0.sortOrder < $1.sortOrder }
+        let hasItems = !sortedItems.isEmpty
+        let completedCount = sortedItems.filter { $0.isCompletedToday }.count
+
+        return VStack(spacing: 0) {
+            // Parent row
+            HStack(spacing: 0) {
+                categoryColor(for: block.category)
+                    .frame(width: 3)
+
+                HStack(spacing: StackTheme.Spacing.sm) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(formattedTime(block.time))
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(StackTheme.Text.secondary)
+                        Text(block.label)
+                            .font(StackTheme.Typography.body)
+                            .foregroundStyle(StackTheme.Text.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if hasItems {
+                        Text("\(completedCount)/\(sortedItems.count)")
+                            .font(StackTheme.Typography.caption)
+                            .foregroundStyle(StackTheme.Text.secondary)
+                            .monospacedDigit()
+
+                        Button {
+                            withAnimation(.spring(duration: 0.25)) {
+                                viewModel.toggleExpanded(block.id)
+                            }
+                        } label: {
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(StackTheme.Text.secondary)
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            withAnimation(.spring(duration: 0.2)) {
+                                viewModel.toggleBlockCompletion(block, context: context)
+                                updateDayRecord()
+                            }
+                        } label: {
+                            Image(systemName: block.isCompletedToday ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(
+                                    block.isCompletedToday
+                                        ? StackTheme.Accent.primary
+                                        : StackTheme.Text.tertiary
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Button {
+                            withAnimation(.spring(duration: 0.2)) {
+                                toggleBlock(block)
+                            }
+                        } label: {
+                            Image(systemName: block.isCompletedToday ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(
+                                    block.isCompletedToday
+                                        ? StackTheme.Accent.primary
+                                        : StackTheme.Text.tertiary
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, StackTheme.Spacing.md)
+                .padding(.vertical, 10)
+                .background(isCurrent ? StackTheme.Accent.soft : StackTheme.Background.surface)
+            }
+
+            // Expanded sub-items
+            if hasItems && isExpanded {
+                Rectangle()
+                    .fill(StackTheme.Border.subtle)
+                    .frame(height: 1)
+
+                ForEach(sortedItems) { item in
+                    itemRow(item)
+                    if item.id != sortedItems.last?.id {
+                        Rectangle()
+                            .fill(StackTheme.Border.subtle)
+                            .frame(height: 1)
+                            .padding(.leading, StackTheme.Spacing.md + 20)
+                    }
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: StackTheme.Radius.md))
+        .animation(.spring(duration: 0.25), value: isExpanded)
+    }
+
+    private func itemRow(_ item: BlockItem) -> some View {
+        HStack(spacing: StackTheme.Spacing.sm) {
+            Text(item.title)
+                .font(StackTheme.Typography.body)
+                .foregroundStyle(StackTheme.Text.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                withAnimation(.spring(duration: 0.2)) {
+                    viewModel.toggleItemCompletion(item, context: context)
+                    updateDayRecord()
+                }
+            } label: {
+                Image(systemName: item.isCompletedToday ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(
+                        item.isCompletedToday
+                            ? StackTheme.Accent.primary
+                            : StackTheme.Text.tertiary
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.leading, StackTheme.Spacing.md + 20)
+        .padding(.trailing, StackTheme.Spacing.md)
+        .padding(.vertical, 8)
+        .background(StackTheme.Background.surface)
+    }
+
+    // MARK: - Edit button
+
+    private var editButton: some View {
+        Button { showEditSheet = true } label: {
+            Text("Edit Schedule")
+                .font(StackTheme.Typography.caption)
+                .foregroundStyle(StackTheme.Text.secondary)
+                .padding(.horizontal, StackTheme.Spacing.md)
+                .padding(.vertical, StackTheme.Spacing.sm)
+                .background(StackTheme.Background.surface)
+                .clipShape(RoundedRectangle(cornerRadius: StackTheme.Radius.md))
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.top, StackTheme.Spacing.sm)
+    }
+
+    // MARK: - Actions
+
+    private func toggleBlock(_ block: ScheduleBlock) {
+        block.lastCompletedDate = block.isCompletedToday ? nil : Date()
+        try? context.save()
+        updateDayRecord()
+    }
+
+    private func updateDayRecord() {
+        let todayWeekday = Calendar.current.component(.weekday, from: Date())
+        let todayBlocks = viewModel.blocks(for: todayWeekday, from: allBlocks)
+        let completed = todayBlocks.filter { $0.isCompletedToday }.count
+        let total = todayBlocks.count
+        let ratio = total > 0 ? Double(completed) / Double(total) : 0.0
+        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
+        DayRecordService.updateProtocol(ratio: ratio, for: fmt.string(from: Date()), in: context)
     }
 
     // MARK: - Helpers
 
-    /// ISO day-of-week: 0 = Monday … 6 = Sunday
-    private static func todayDow() -> Int {
-        let weekday = Calendar.current.component(.weekday, from: Date())
-        return (weekday - 2 + 7) % 7
+    private func formattedTime(_ timeStr: String) -> String {
+        let s = timeStr.lowercased().trimmingCharacters(in: .whitespaces)
+        guard s != "variable", s != "all day" else { return timeStr }
+        let isPM = s.hasSuffix("pm")
+        let isAM = s.hasSuffix("am")
+        guard isPM || isAM else { return timeStr }
+        let period = isPM ? "PM" : "AM"
+        let clean = s
+            .replacingOccurrences(of: "pm", with: "")
+            .replacingOccurrences(of: "am", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        let parts = clean.split(separator: ":").compactMap { Int($0) }
+        guard !parts.isEmpty else { return timeStr }
+        let h = parts[0]
+        let m = parts.count > 1 ? parts[1] : 0
+        return String(format: "%d:%02d %@", h, m, period)
+    }
+
+    private func categoryColor(for category: String) -> Color {
+        switch category.lowercased() {
+        case "morning", "nutrition":          return StackTheme.Accent.positive
+        case "recovery", "ml", "career":      return StackTheme.Accent.primary
+        case "fitness":                       return StackTheme.Accent.warning
+        case "work", "personal":              return StackTheme.Text.secondary
+        case "evening":                       return StackTheme.Text.tertiary
+        default:                              return StackTheme.Accent.primary
+        }
     }
 }
 

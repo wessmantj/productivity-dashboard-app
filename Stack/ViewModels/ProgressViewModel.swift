@@ -5,7 +5,7 @@ import SwiftData
 // MARK: — Types
 
 enum HeatmapType {
-    case protocol_, workout, journal, learning, overall
+    case protocol_, workout, overall
 }
 
 enum IntensityLevel {
@@ -45,8 +45,6 @@ final class ProgressViewModel {
 
     var protocolRecords: [DayRecord] { allRecords.filter { $0.protocolRatio  > 0    } }
     var workoutRecords:  [DayRecord] { allRecords.filter { $0.workoutCompleted       } }
-    var journalRecords:  [DayRecord] { allRecords.filter { $0.journalWritten         } }
-    var learningRecords: [DayRecord] { allRecords.filter { $0.learningHours > 0     } }
 
     // MARK: - Stats
 
@@ -101,26 +99,14 @@ final class ProgressViewModel {
         case .workout:
             return record.workoutCompleted ? .high : .none
 
-        case .journal:
-            return record.journalWritten ? .high : .none
-
-        case .learning:
-            guard record.learningHours > 0 else { return .none }
-            if record.learningHours < 1 { return .low }
-            if record.learningHours < 3 { return .medium }
-            return .high
-
         case .overall:
             let levels = [
                 intensity(for: record, type: .protocol_),
                 intensity(for: record, type: .workout),
-                intensity(for: record, type: .journal),
-                intensity(for: record, type: .learning)
             ]
             let active = levels.filter { $0 != .none }.count
             if active == 0 { return .none }
             if active == 1 { return .low }
-            if active <= 3 { return .medium }
             return .high
         }
     }
@@ -136,8 +122,7 @@ final class ProgressViewModel {
     }
 
     private func isActive(_ record: DayRecord) -> Bool {
-        record.protocolRatio > 0 || record.workoutCompleted ||
-        record.journalWritten  || record.learningHours > 0
+        record.protocolRatio > 0 || record.workoutCompleted
     }
 
     private func dateKey(from date: Date) -> String {

@@ -72,10 +72,10 @@ struct RoutineView: View {
             HStack(spacing: StackTheme.Spacing.md) {
                 // Day badge
                 VStack(spacing: 2) {
-                    Text(Self.dayNames[safe: workout.dayOfWeek] ?? "")
+                    Text(Self.dayNames[safe: workout.dayOfWeek - 1] ?? "")
                         .font(StackTheme.Typography.label)
                         .foregroundStyle(workout.isRestDay ? StackTheme.Text.tertiary : StackTheme.Text.secondary)
-                    Text("\(workout.dayOfWeek == 0 ? 7 : workout.dayOfWeek)")
+                    Text("\(workout.dayOfWeek)")
                         .font(StackTheme.Typography.title)
                         .foregroundStyle(workout.isRestDay ? StackTheme.Text.tertiary : StackTheme.Text.primary)
                 }
@@ -108,7 +108,7 @@ struct RoutineView: View {
     // MARK: - Seed 7 days
 
     private func seedWeek() {
-        for day in 0..<7 {
+        for day in 1...7 {
             let workout = WorkoutDay(dayOfWeek: day)
             context.insert(workout)
         }

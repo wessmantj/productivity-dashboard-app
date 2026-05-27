@@ -291,15 +291,9 @@ private struct CellDetailSheet: View {
             row(label: "Protocol", value: "\(Int(rec.protocolRatio * 100))% completed")
         case .workout:
             row(label: "Workout", value: rec.workoutCompleted ? "Completed ✓" : "Not logged")
-        case .journal:
-            row(label: "Journal", value: rec.journalWritten ? "Written ✓" : "Not logged")
-        case .learning:
-            row(label: "Learning", value: String(format: "%.1f hours", rec.learningHours))
         case .overall:
-            row(label: "Protocol",  value: "\(Int(rec.protocolRatio * 100))%")
-            row(label: "Workout",   value: rec.workoutCompleted ? "✓" : "—")
-            row(label: "Journal",   value: rec.journalWritten   ? "✓" : "—")
-            row(label: "Learning",  value: String(format: "%.1f hrs", rec.learningHours))
+            row(label: "Protocol", value: "\(Int(rec.protocolRatio * 100))%")
+            row(label: "Workout",  value: rec.workoutCompleted ? "✓" : "—")
         }
     }
 

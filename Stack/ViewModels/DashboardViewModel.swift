@@ -5,137 +5,170 @@ import SwiftData
 @Observable
 final class DashboardViewModel {
 
-    // MARK: - Protocol
-    var protocolRatio: Double = 0
-    var protocolCompleted: Int = 0
-    var protocolTotal: Int = 46
+    // MARK: - Header
+    var greetingPrefix: String = ""
+    var userName: String = ""
+    var formattedDate: String = ""
 
-    // MARK: - Fitness
-    var todayMuscleGroup: String = ""
-    var todayWorkoutComplete: Bool = false
-    var todayIsRestDay: Bool = false
-    var fitnessProgress: Double = 0
+    // MARK: - Right Now
+    var currentBlockTitle: String? = nil
+    var currentBlockTime: String? = nil
 
-    // MARK: - Health
-    var currentWeight: Double? = nil
-    var lastNightSleep: Double? = nil
-    var sleepQuality: Int? = nil
+    // MARK: - Today's Progress
+    var completedBlocks: Int = 0
+    var totalBlocks: Int = 0
+    var completionRatio: Double = 0
 
-    // MARK: - Learning
-    var currentPhaseName: String = ""
-    var currentWeekName: String = ""
-    var learningProgress: Double = 0
-    var completedLearningWeeks: Int = 0
-
-    // MARK: - Vision
-    var dailyQuote: Quote? = nil
-    var dailyAffirmation: Affirmation? = nil
+    // MARK: - Today's Workout
+    var todayWorkoutName: String = ""
+    var todayWorkoutSubtitle: String = ""
 
     // MARK: - Tasks
-    var todayTaskCount: Int = 0
-    var overdueCount: Int = 0
-    var highPriorityCount: Int = 0
+    var openTaskCount: Int = 0
 
-    // MARK: - Journal
-    var journalStreak: Int = 0
-    var hasJournaledToday: Bool = false
+    // MARK: - Internal
+
+    private var modelContext: ModelContext?
+    private var timer: Timer?
+
+    init() {
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            self?.refresh()
+        }
+    }
+
+    deinit { timer?.invalidate() }
+
+    func setup(context: ModelContext) {
+        modelContext = context
+        refresh()
+    }
+
+    func refresh() {
+        guard let context = modelContext else { return }
+        refreshHeader()
+        refreshCurrentBlock(context: context)
+        refreshProgress(context: context)
+        refreshWorkout(context: context)
+        refreshTasks(context: context)
+    }
 
     // MARK: - Header
-    var greeting: String = ""
-    var dateString: String = ""
 
-    // MARK: - Protocol section pills
-    struct SectionPill: Identifiable {
-        let id: String
-        let emoji: String
-        let label: String
-        let completed: Int
-        let total: Int
-        var isComplete: Bool { completed == total && total > 0 }
-    }
-    var sectionPills: [SectionPill] = []
-
-    // MARK: - Setup
-
-    func setup(
-        protocolVM: ProtocolViewModel,
-        fitnessVM: FitnessViewModel,
-        healthVM: HealthViewModel,
-        learningVM: LearningViewModel,
-        visionVM: VisionViewModel,
-        tasksVM: TasksViewModel,
-        journalVM: JournalViewModel,
-        context: ModelContext
-    ) {
-        // Greeting & date
+    private func refreshHeader() {
         let hour = Calendar.current.component(.hour, from: Date())
-        let base = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
-        let name = UserDefaults.standard.string(forKey: "userName") ?? ""
-        greeting = name.isEmpty ? base : "\(base), \(name)"
+        greetingPrefix = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+        userName = UserDefaults.standard.string(forKey: "userName") ?? ""
         let fmt = DateFormatter()
         fmt.dateFormat = "EEEE, MMMM d"
-        dateString = fmt.string(from: Date())
+        formattedDate = fmt.string(from: Date())
+    }
 
-        // Protocol — fetch sections for ratio and pills
-        do {
-            let sections = try context.fetch(
-                FetchDescriptor<ProtocolSection>(sortBy: [SortDescriptor(\.sortOrder)])
+    // MARK: - Current Block
+
+    private func refreshCurrentBlock(context: ModelContext) {
+        let todayWeekday = Calendar.current.component(.weekday, from: Date())
+        guard let blocks = try? context.fetch(
+            FetchDescriptor<ScheduleBlock>(
+                predicate: #Predicate<ScheduleBlock> { $0.dayOfWeek == todayWeekday }
             )
-            var totalItems = 0
-            var completedItemCount = 0
-            var pills: [SectionPill] = []
-            for section in sections {
-                let items = section.items.sorted { $0.sortOrder < $1.sortOrder }
-                let sectionDone = items.filter { protocolVM.completedItems.contains($0.id) }.count
-                totalItems += items.count
-                completedItemCount += sectionDone
-                pills.append(SectionPill(
-                    id: section.id, emoji: section.emoji, label: section.label,
-                    completed: sectionDone, total: items.count
-                ))
-            }
-            protocolTotal = max(totalItems, 46)
-            protocolCompleted = completedItemCount
-            protocolRatio = protocolTotal > 0 ? Double(protocolCompleted) / Double(protocolTotal) : 0
-            sectionPills = pills
-        } catch {}
+        ) else {
+            currentBlockTitle = nil
+            currentBlockTime = nil
+            return
+        }
 
-        // Fitness — fetch today's WorkoutDay directly from context
-        let weekday = Calendar.current.component(.weekday, from: Date()) - 1
-        do {
-            let desc = FetchDescriptor<WorkoutDay>(
-                predicate: #Predicate<WorkoutDay> { $0.dayOfWeek == weekday }
+        let nowMin = minutesSinceMidnight(Date())
+        let sorted = blocks.compactMap { block -> (ScheduleBlock, Int)? in
+            guard let min = parsedMinutes(block.time) else { return nil }
+            return (block, min)
+        }.sorted { $0.1 < $1.1 }
+
+        var active: ScheduleBlock? = nil
+        for (idx, (block, blockMin)) in sorted.enumerated() {
+            let nextMin = idx + 1 < sorted.count ? sorted[idx + 1].1 : Int.max
+            if nowMin >= blockMin && nowMin < nextMin {
+                active = block
+                break
+            }
+        }
+
+        currentBlockTitle = active?.label
+        currentBlockTime = active?.time
+    }
+
+    // MARK: - Progress
+
+    private func refreshProgress(context: ModelContext) {
+        let todayWeekday = Calendar.current.component(.weekday, from: Date())
+        guard let blocks = try? context.fetch(
+            FetchDescriptor<ScheduleBlock>(
+                predicate: #Predicate<ScheduleBlock> { $0.dayOfWeek == todayWeekday }
             )
-            if let wd = try context.fetch(desc).first {
-                todayIsRestDay = wd.isRestDay
-                todayWorkoutComplete = wd.isCompleted
-                todayMuscleGroup = wd.muscleGroup
-                fitnessProgress = fitnessVM.progress(for: wd)
-            }
-        } catch {}
+        ) else { return }
+        totalBlocks = blocks.count
+        completedBlocks = blocks.filter { $0.isCompletedToday }.count
+        completionRatio = totalBlocks > 0 ? Double(completedBlocks) / Double(totalBlocks) : 0
+    }
 
-        // Health
-        currentWeight = healthVM.currentWeight
-        lastNightSleep = healthVM.sleepEntries.first?.hours ?? healthVM.hkSleep
-        sleepQuality = healthVM.sleepEntries.first?.quality
+    // MARK: - Workout
 
-        // Learning
-        currentPhaseName = learningVM.currentPhase?.title ?? "No active phase"
-        currentWeekName = learningVM.currentWeek?.title ?? ""
-        learningProgress = learningVM.overallProgress
-        completedLearningWeeks = learningVM.completedWeeks
+    private func refreshWorkout(context: ModelContext) {
+        let todayWeekday = Calendar.current.component(.weekday, from: Date())
+        guard let workout = try? context.fetch(
+            FetchDescriptor<WorkoutDay>(
+                predicate: #Predicate<WorkoutDay> { $0.dayOfWeek == todayWeekday }
+            )
+        ).first else {
+            todayWorkoutName = "No workout scheduled"
+            todayWorkoutSubtitle = ""
+            return
+        }
 
-        // Vision
-        dailyQuote = visionVM.dailyQuote
-        dailyAffirmation = visionVM.dailyAffirmation
+        todayWorkoutName = workout.muscleGroup.isEmpty ? "No workout scheduled" : workout.muscleGroup
 
-        // Tasks
-        todayTaskCount = tasksVM.activeTasks.count
-        overdueCount = 0
-        highPriorityCount = 0
+        if workout.isRestDay {
+            todayWorkoutSubtitle = ""
+        } else {
+            let total = workout.exercises.count
+            let done = workout.exercises.filter { $0.isCompleted }.count
+            todayWorkoutSubtitle = total > 0
+                ? "\(total) exercise\(total == 1 ? "" : "s") • \(done) of \(total) done"
+                : ""
+        }
+    }
 
-        // Journal
-        journalStreak = journalVM.currentStreak
-        hasJournaledToday = journalVM.todayEntry != nil
+    // MARK: - Tasks
+
+    private func refreshTasks(context: ModelContext) {
+        let desc = FetchDescriptor<TaskItem>(
+            predicate: #Predicate<TaskItem> { !$0.isComplete }
+        )
+        openTaskCount = (try? context.fetch(desc).count) ?? 0
+    }
+
+    // MARK: - Time helpers
+
+    private func minutesSinceMidnight(_ date: Date) -> Int {
+        let cal = Calendar.current
+        return cal.component(.hour, from: date) * 60 + cal.component(.minute, from: date)
+    }
+
+    func parsedMinutes(_ timeStr: String) -> Int? {
+        let s = timeStr.lowercased().trimmingCharacters(in: .whitespaces)
+        let isPM = s.hasSuffix("pm")
+        let isAM = s.hasSuffix("am")
+        guard isPM || isAM else { return nil }
+        let clean = s
+            .replacingOccurrences(of: "pm", with: "")
+            .replacingOccurrences(of: "am", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        let parts = clean.split(separator: ":").compactMap { Int($0) }
+        guard !parts.isEmpty else { return nil }
+        var h = parts[0]
+        let m = parts.count > 1 ? parts[1] : 0
+        if isPM && h != 12 { h += 12 }
+        if isAM && h == 12 { h = 0 }
+        return h * 60 + m
     }
 }

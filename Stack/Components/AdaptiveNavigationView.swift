@@ -33,22 +33,9 @@ struct AdaptiveNavigationView: View {
                 .tabItem { Label(AppTab.tasks.label, systemImage: AppTab.tasks.icon) }
                 .tag(AppTab.tasks)
 
-            LearningView()
-                .tabItem { Label(AppTab.learn.label, systemImage: AppTab.learn.icon) }
-                .tag(AppTab.learn)
-
-            // — More overflow —
             ProgressView()
                 .tabItem { Label(AppTab.progress.label, systemImage: AppTab.progress.icon) }
                 .tag(AppTab.progress)
-
-            VisionView()
-                .tabItem { Label(AppTab.vision.label, systemImage: AppTab.vision.icon) }
-                .tag(AppTab.vision)
-
-            HealthView()
-                .tabItem { Label(AppTab.health.label, systemImage: AppTab.health.icon) }
-                .tag(AppTab.health)
         }
         .tint(StackTheme.Accent.primary)
         .stackTabBarStyle()
@@ -65,11 +52,7 @@ struct AdaptiveNavigationView: View {
                 Label(AppTab.proto.label,     systemImage: AppTab.proto.icon).tag(AppTab.proto)
                 Label(AppTab.fitness.label,   systemImage: AppTab.fitness.icon).tag(AppTab.fitness)
                 Label(AppTab.tasks.label,     systemImage: AppTab.tasks.icon).tag(AppTab.tasks)
-                Label(AppTab.learn.label,     systemImage: AppTab.learn.icon).tag(AppTab.learn)
                 Label(AppTab.progress.label,  systemImage: AppTab.progress.icon).tag(AppTab.progress)
-                Divider()
-                Label(AppTab.vision.label,    systemImage: AppTab.vision.icon).tag(AppTab.vision)
-                Label(AppTab.health.label,    systemImage: AppTab.health.icon).tag(AppTab.health)
             }
             .listStyle(.sidebar)
             .navigationTitle("Stack")
@@ -79,11 +62,8 @@ struct AdaptiveNavigationView: View {
             case .dashboard: DashboardView(selectedTab: $selectedTab)
             case .proto:     ProtocolView()
             case .fitness:   FitnessView()
-            case .health:    HealthView()
-            case .learn:     LearningView()
-            case .progress:  ProgressView()
-            case .vision:    VisionView()
             case .tasks:     TasksView()
+            case .progress:  ProgressView()
             }
         }
     }

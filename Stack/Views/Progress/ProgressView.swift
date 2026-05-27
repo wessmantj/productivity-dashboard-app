@@ -37,8 +37,6 @@ struct ProgressView: View {
                     // Individual heatmaps
                     HeatmapCard(title: "Protocol",  type: .protocol_, viewModel: viewModel)
                     HeatmapCard(title: "Workout",   type: .workout,   viewModel: viewModel)
-                    HeatmapCard(title: "Journal",   type: .journal,   viewModel: viewModel)
-                    HeatmapCard(title: "Learning",  type: .learning,  viewModel: viewModel)
                 }
                 .padding(StackTheme.Spacing.md)
             }

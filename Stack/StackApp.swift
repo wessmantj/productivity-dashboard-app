@@ -12,26 +12,15 @@ struct StackApp: App {
     let container: ModelContainer = {
         let schema = Schema([
             TaskItem.self,
-            JournalEntry.self,
-            Note.self,
             HealthMetric.self,
             WorkoutDay.self,
             Exercise.self,
             Supplement.self,
-            DailyProtocol.self,
-            ProtocolSection.self,
-            ProtocolItem.self,
             WeightEntry.self,
             SleepEntry.self,
             CardioEntry.self,
-            LearningPhase.self,
-            LearningWeek.self,
-            LearningTopic.self,
-            ReadingEntry.self,
-            Goal.self,
-            Quote.self,
-            Affirmation.self,
             ScheduleBlock.self,
+            BlockItem.self,
             DayRecord.self,
         ])
         let config = ModelConfiguration(schema: schema)
@@ -48,7 +37,12 @@ struct StackApp: App {
             #if os(macOS)
                 .frame(minWidth: 900, minHeight: 600)
             #endif
-                .onAppear { requestNotificationAuth() }
+                .onAppear {
+                    WorkoutSeedService.seedIfNeeded(in: container.mainContext)
+                    ScheduleSeedService.seedIfNeeded(in: container.mainContext)
+                    ScheduleSeedService.seedBlockItemsIfNeeded(in: container.mainContext)
+                    requestNotificationAuth()
+                }
                 #if os(iOS)
                 .fullScreenCover(isPresented: Binding(
                     get: { !hasCompletedOnboarding },

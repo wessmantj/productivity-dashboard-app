@@ -26,8 +26,6 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss)      private var dismiss
 
-    @Query(sort: \JournalEntry.date, order: .reverse) private var journalEntries: [JournalEntry]
-
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
 
     // MARK: - Time-picker bindings (seconds-from-midnight ↔ Date)
@@ -218,19 +216,6 @@ struct SettingsView: View {
 
             StackCard {
                 VStack(spacing: StackTheme.Spacing.sm) {
-                    ShareLink(
-                        item: journalExportText,
-                        subject: Text("Stack Journal Export"),
-                        message: Text("My Stack journal entries")
-                    ) {
-                        Label("Export Journal Entries", systemImage: "square.and.arrow.up")
-                            .font(StackTheme.Typography.body)
-                            .foregroundStyle(StackTheme.Text.primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    Divider().background(StackTheme.Border.subtle)
-
                     Button {
                         showResetProtocolAlert = true
                     } label: {
@@ -296,33 +281,19 @@ struct SettingsView: View {
 
     // MARK: - Helpers
 
-    private var journalExportText: String {
-        let fmt = DateFormatter()
-        fmt.dateStyle = .full
-        fmt.timeStyle = .none
-        var lines = ["Stack Journal Export", "Exported \(fmt.string(from: Date()))", ""]
-        for entry in journalEntries {
-            lines.append("--- \(fmt.string(from: entry.date)) ---")
-            lines.append(entry.body)
-            if !entry.tags.isEmpty {
-                lines.append("Tags: \(entry.tags.joined(separator: ", "))")
-            }
-            lines.append("")
-        }
-        return lines.joined(separator: "\n")
-    }
-
     private func resetDailyProtocol() {
-        let key = {
-            let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-            return f.string(from: Date())
-        }()
-        let desc = FetchDescriptor<DailyProtocol>(
-            predicate: #Predicate<DailyProtocol> { $0.date == key }
+        let todayWeekday = Calendar.current.component(.weekday, from: Date())
+        let dow = (todayWeekday - 2 + 7) % 7
+        let desc = FetchDescriptor<ScheduleBlock>(
+            predicate: #Predicate<ScheduleBlock> { $0.dayOfWeek == dow }
         )
-        if let record = try? modelContext.fetch(desc).first {
-            record.completedItems = []
+        if let blocks = try? modelContext.fetch(desc) {
+            for block in blocks where block.isCompletedToday {
+                block.lastCompletedDate = nil
+            }
         }
+        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
+        DayRecordService.updateProtocol(ratio: 0, for: fmt.string(from: Date()), in: modelContext)
     }
 
     private func checkHealthAuth() {

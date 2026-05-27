@@ -38,7 +38,7 @@ final class FitnessViewModel {
     // MARK: - Date helpers
 
     var todayWeekday: Int {
-        Calendar.current.component(.weekday, from: Date()) - 1  // 0 = Sunday
+        Calendar.current.component(.weekday, from: Date())  // Calendar.weekday: 1=Sun … 7=Sat
     }
 
     private var todayKey: String {
