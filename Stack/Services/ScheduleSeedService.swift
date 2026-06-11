@@ -3,6 +3,9 @@ import Foundation
 
 struct ScheduleSeedService {
 
+    /// Bump this to force a one-time reseed of the weekly schedule on existing installs.
+    private static let scheduleSeedVersion = 2
+
     private struct B {
         let time: String
         let label: String
@@ -13,10 +16,19 @@ struct ScheduleSeedService {
     }
 
     static func seedIfNeeded(in context: ModelContext) {
-        guard !UserDefaults.standard.bool(forKey: "scheduleSummerV1Seeded") else { return }
+        // integer(forKey:) returns 0 when the key is missing (fresh installs and
+        // installs from before versioned seeding), so they all reseed once.
+        let stored = UserDefaults.standard.integer(forKey: "scheduleSeedVersion")
+        guard stored < scheduleSeedVersion else { return }
+
         clearAll(in: context)
         seed(in: context)
-        UserDefaults.standard.set(true, forKey: "scheduleSummerV1Seeded")
+        try? context.save()
+
+        // clearAll cascade-deletes the old blocks' BlockItems, so reset the
+        // block-item flag to let seedBlockItemsIfNeeded repopulate the fresh blocks.
+        UserDefaults.standard.removeObject(forKey: "blockItemsSummerV1Seeded")
+        UserDefaults.standard.set(scheduleSeedVersion, forKey: "scheduleSeedVersion")
     }
 
     static func seedBlockItemsIfNeeded(in context: ModelContext) {
@@ -204,7 +216,7 @@ struct ScheduleSeedService {
         B("10:30 PM", "Sleep",                                      "Evening"),
     ]
 
-    // MARK: — Tuesday (3) — Internship 9–3, Pull
+    // MARK: — Tuesday (3) — NBRR 9–5, Pull
 
     private static let tuesday: [B] = [
         B("6:00 AM",  "Wake — water, sunlight",                    "Morning"),
@@ -215,21 +227,20 @@ struct ScheduleSeedService {
         B("7:25 AM",  "Read aloud — 10 min",                        "ML"),
         B("7:35 AM",  "ML morning theory — 45 min",                 "ML"),
         B("8:20 AM",  "Commute to NBRR — 40 min",                   "Work"),
-        B("9:00 AM",  "Internship",                                 "Work"),
+        B("9:00 AM",  "Internship (NBRR 9–5)",                      "Work"),
         B("12:00 PM", "Lunch + physiological sigh breathwork",      "Nutrition"),
-        B("3:00 PM",  "End work — commute home",                    "Work"),
-        B("3:45 PM",  "ML afternoon block — 1.5 hr",                "ML"),
-        B("5:15 PM",  "Drive to gym",                               "Fitness"),
-        B("5:40 PM",  "Lift — Pull (60 min)",                       "Fitness"),
-        B("7:05 PM",  "Home, PM skincare + minox",                  "Evening"),
-        B("7:20 PM",  "Dinner + journal interaction debrief",        "Nutrition"),
-        B("8:05 PM",  "Conversational / personal block — 1 hr",     "Personal"),
-        B("9:05 PM",  "Stretch + wind down",                        "Evening"),
-        B("9:45 PM",  "Read 10 pages",                              "Personal"),
+        B("5:00 PM",  "End work — commute home",                    "Work"),
+        B("5:45 PM",  "Drive to gym",                               "Fitness"),
+        B("6:10 PM",  "Lift — Pull (60 min)",                       "Fitness"),
+        B("7:35 PM",  "Home, PM skincare + minox",                  "Evening"),
+        B("7:50 PM",  "Dinner + journal debrief",                   "Nutrition"),
+        B("8:35 PM",  "Decompress / social / personal",             "Personal"),
+        B("9:30 PM",  "Stretch + wind down",                        "Evening"),
+        B("9:50 PM",  "Read 10 pages",                              "Personal"),
         B("10:30 PM", "Sleep",                                      "Evening"),
     ]
 
-    // MARK: — Wednesday (4) — Internship 9–5 in-person, Lower
+    // MARK: — Wednesday (4) — NBRR 9–5, Lower
 
     private static let wednesday: [B] = [
         B("6:00 AM",  "Wake — water, sunlight",                    "Morning"),
@@ -240,7 +251,7 @@ struct ScheduleSeedService {
         B("7:25 AM",  "Read aloud — 10 min",                        "ML"),
         B("7:35 AM",  "ML morning theory — 45 min",                 "ML"),
         B("8:20 AM",  "Commute to NBRR — 40 min",                   "Work"),
-        B("9:00 AM",  "Internship (full day with Andrew)",           "Work"),
+        B("9:00 AM",  "Internship (NBRR 9–5)",                      "Work"),
         B("12:00 PM", "Lunch + physiological sigh breathwork",      "Nutrition"),
         B("5:00 PM",  "End work — commute home",                    "Work"),
         B("5:45 PM",  "Drive to gym",                               "Fitness"),
@@ -253,54 +264,50 @@ struct ScheduleSeedService {
         B("10:30 PM", "Sleep",                                      "Evening"),
     ]
 
-    // MARK: — Thursday (5) — Internship 9–2, REST day
+    // MARK: — Thursday (5) — Free day, REST + biggest ML day
 
     private static let thursday: [B] = [
-        B("6:00 AM",  "Wake — water, sunlight",                         "Morning"),
-        B("6:05 AM",  "AM walk — 25 min, fasted",                       "Recovery"),
-        B("6:30 AM",  "Shower + AM skincare + minox",                    "Morning"),
-        B("6:55 AM",  "Breakfast + AM supplements",                      "Nutrition"),
-        B("7:15 AM",  "Posture + neck lengthening — 10 min",             "Recovery"),
-        B("7:25 AM",  "Read aloud — 10 min",                             "ML"),
-        B("7:35 AM",  "ML morning theory — 45 min",                      "ML"),
-        B("8:20 AM",  "Commute to NBRR — 40 min",                        "Work"),
-        B("9:00 AM",  "Internship",                                      "Work"),
-        B("12:00 PM", "Lunch + physiological sigh breathwork",           "Nutrition"),
-        B("2:00 PM",  "End work — commute home",                         "Work"),
-        B("2:45 PM",  "Lunch + decompress",                              "Nutrition"),
-        B("3:15 PM",  "ML deep work — 3 hr (biggest ML day)",            "ML"),
-        B("6:15 PM",  "Dinner + journal debrief",                        "Nutrition"),
-        B("7:00 PM",  "Career block — networking / LinkedIn / applications", "Career"),
-        B("8:00 PM",  "Personal / creative",                             "Personal"),
-        B("9:00 PM",  "Extended stretch + neck endurance",               "Recovery"),
-        B("9:45 PM",  "Read 10 pages",                                   "Personal"),
-        B("10:30 PM", "Sleep",                                           "Evening"),
+        B("6:00 AM",  "Wake — water, sunlight",                                                  "Morning"),
+        B("6:05 AM",  "AM walk — 25 min, fasted",                                                "Recovery"),
+        B("6:30 AM",  "Shower + AM skincare + minox",                                             "Morning"),
+        B("6:55 AM",  "Breakfast + AM supplements",                                               "Nutrition"),
+        B("7:15 AM",  "Posture + neck lengthening — 10 min",                                      "Recovery"),
+        B("7:25 AM",  "Read aloud — 10 min",                                                      "ML"),
+        B("7:35 AM",  "ML morning theory — 45 min",                                               "ML"),
+        B("8:30 AM",  "ML deep work — 3.5 hr (biggest ML day)",                                   "ML"),
+        B("12:00 PM", "Lunch + physiological sigh breathwork",                                    "Nutrition"),
+        B("1:00 PM",  "ML deep work — 3 hr",                                                      "ML"),
+        B("4:00 PM",  "Active recovery — long walk 45–60 min + mobility 15 min + neck training",  "Recovery"),
+        B("5:30 PM",  "Free / errands / decompress",                                              "Personal"),
+        B("6:30 PM",  "Dinner + journal debrief",                                                 "Nutrition"),
+        B("7:15 PM",  "Career block — networking / LinkedIn / applications",                      "Career"),
+        B("8:15 PM",  "Personal / creative",                                                      "Personal"),
+        B("9:00 PM",  "Extended stretch + neck endurance",                                        "Recovery"),
+        B("9:45 PM",  "Read 10 pages",                                                            "Personal"),
+        B("10:30 PM", "Sleep",                                                                    "Evening"),
     ]
 
-    // MARK: — Friday (6) — Internship 9–1, Upper
+    // MARK: — Friday (6) — NBRR 9–5, Upper
 
     private static let friday: [B] = [
-        B("6:00 AM",  "Wake — water, sunlight",                    "Morning"),
-        B("6:05 AM",  "AM walk — 25 min, fasted",                  "Recovery"),
-        B("6:30 AM",  "Shower + AM skincare + minox",               "Morning"),
-        B("6:55 AM",  "Breakfast + AM supplements",                 "Nutrition"),
-        B("7:15 AM",  "Posture + neck lengthening — 10 min",        "Recovery"),
-        B("7:25 AM",  "Read aloud — 10 min",                        "ML"),
-        B("7:35 AM",  "ML morning theory — 45 min",                 "ML"),
-        B("8:20 AM",  "Commute to NBRR — 40 min",                   "Work"),
-        B("9:00 AM",  "Internship",                                 "Work"),
-        B("12:00 PM", "Lunch + physiological sigh breathwork",      "Nutrition"),
-        B("1:00 PM",  "End work — commute home",                    "Work"),
-        B("1:45 PM",  "Lunch",                                      "Nutrition"),
-        B("2:15 PM",  "ML afternoon block — 2 hr",                  "ML"),
-        B("4:15 PM",  "Drive to gym",                               "Fitness"),
-        B("4:40 PM",  "Lift — Upper blend (60 min)",                "Fitness"),
-        B("6:05 PM",  "Home, PM skincare + minox",                  "Evening"),
-        B("6:20 PM",  "Dinner + journal debrief",                   "Nutrition"),
-        B("7:05 PM",  "Side income block — 1 hr",                   "Career"),
-        B("8:05 PM",  "Protected free time — friends / games / creative", "Personal"),
-        B("10:00 PM", "Wind down",                                  "Evening"),
-        B("10:30 PM", "Sleep",                                      "Evening"),
+        B("6:00 AM",  "Wake — water, sunlight",                                "Morning"),
+        B("6:05 AM",  "AM walk — 25 min, fasted",                              "Recovery"),
+        B("6:30 AM",  "Shower + AM skincare + minox",                           "Morning"),
+        B("6:55 AM",  "Breakfast + AM supplements",                             "Nutrition"),
+        B("7:15 AM",  "Posture + neck lengthening — 10 min",                    "Recovery"),
+        B("7:25 AM",  "Read aloud — 10 min",                                    "ML"),
+        B("7:35 AM",  "ML morning theory — 45 min",                             "ML"),
+        B("8:20 AM",  "Commute to NBRR — 40 min",                               "Work"),
+        B("9:00 AM",  "Internship (NBRR 9–5)",                                  "Work"),
+        B("12:00 PM", "Lunch + physiological sigh breathwork",                  "Nutrition"),
+        B("5:00 PM",  "End work — commute home",                                "Work"),
+        B("5:45 PM",  "Drive to gym",                                           "Fitness"),
+        B("6:10 PM",  "Lift — Upper blend (60 min)",                            "Fitness"),
+        B("7:35 PM",  "Home, PM skincare + minox",                              "Evening"),
+        B("7:50 PM",  "Dinner + journal debrief",                               "Nutrition"),
+        B("8:35 PM",  "Protected free time — friends / games / creative",       "Personal"),
+        B("10:00 PM", "Wind down",                                              "Evening"),
+        B("10:30 PM", "Sleep",                                                  "Evening"),
     ]
 
     // MARK: — Saturday (7) — Lift + ML + social anchor
