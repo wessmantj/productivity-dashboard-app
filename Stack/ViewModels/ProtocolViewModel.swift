@@ -6,7 +6,7 @@ import SwiftData
 final class ProtocolViewModel {
 
     // MARK: - State
-    var selectedDay: Int = Calendar.current.component(.weekday, from: Date())
+    var selectedDay: Int = Weekday.today
     var expandedBlockIDs: Set<UUID> = []
 
     // MARK: - Timer
@@ -42,7 +42,7 @@ final class ProtocolViewModel {
 
     func completionCount(for day: Int, from allBlocks: [ScheduleBlock]) -> (completed: Int, total: Int) {
         let dayBlocks = blocks(for: day, from: allBlocks)
-        let isToday = day == Calendar.current.component(.weekday, from: Date())
+        let isToday = day == Weekday.today
         if isToday {
             return (dayBlocks.filter { $0.isCompletedToday }.count, dayBlocks.count)
         }
@@ -70,43 +70,6 @@ final class ProtocolViewModel {
     // MARK: - Current block
 
     func currentBlockID(for blocks: [ScheduleBlock]) -> PersistentIdentifier? {
-        let nowMin = minutesSinceMidnight(currentTime)
-        let sorted = blocks.compactMap { block -> (ScheduleBlock, Int)? in
-            guard let min = minutesSinceMidnightStr(block.time) else { return nil }
-            return (block, min)
-        }.sorted { $0.1 < $1.1 }
-
-        for (idx, (block, blockMin)) in sorted.enumerated() {
-            let nextMin = idx + 1 < sorted.count ? sorted[idx + 1].1 : Int.max
-            if nowMin >= blockMin && nowMin < nextMin {
-                return block.persistentModelID
-            }
-        }
-        return nil
-    }
-
-    // MARK: - Helpers
-
-    private func minutesSinceMidnight(_ date: Date) -> Int {
-        let cal = Calendar.current
-        return cal.component(.hour, from: date) * 60 + cal.component(.minute, from: date)
-    }
-
-    func minutesSinceMidnightStr(_ timeStr: String) -> Int? {
-        let s = timeStr.lowercased().trimmingCharacters(in: .whitespaces)
-        guard s != "variable", s != "all day" else { return nil }
-        let isPM = s.hasSuffix("pm")
-        let isAM = s.hasSuffix("am")
-        let clean = s
-            .replacingOccurrences(of: "pm", with: "")
-            .replacingOccurrences(of: "am", with: "")
-            .trimmingCharacters(in: .whitespaces)
-        let parts = clean.split(separator: ":").compactMap { Int($0) }
-        guard !parts.isEmpty else { return nil }
-        var h = parts[0]
-        let m = parts.count > 1 ? parts[1] : 0
-        if isPM && h != 12 { h += 12 }
-        if isAM && h == 12 { h = 0 }
-        return h * 60 + m
+        ScheduleTime.currentBlock(in: blocks, at: currentTime)?.persistentModelID
     }
 }

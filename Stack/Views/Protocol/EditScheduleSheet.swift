@@ -11,16 +11,16 @@ struct EditScheduleSheet: View {
     @State private var showAddForm = false
     @State private var newTime = Date()
     @State private var newTitle = ""
-    @State private var newCategory = "morning"
+    @State private var newCategory = "Morning"
 
+    // Matches the categories used by the seeded schedule and ProtocolView's color map.
     private static let categories = [
-        "morning", "deepwork", "class", "work", "gym", "body",
-        "nutrition", "commute", "evening", "sleep", "free"
+        "Morning", "Recovery", "Nutrition", "ML", "Work",
+        "Fitness", "Career", "Personal", "Evening"
     ]
 
     private var dayBlocks: [ScheduleBlock] {
-        let dow = (selectedDay - 2 + 7) % 7
-        return allBlocks.filter { $0.dayOfWeek == dow }.sorted { $0.sortOrder < $1.sortOrder }
+        allBlocks.filter { $0.dayOfWeek == selectedDay }.sorted { $0.sortOrder < $1.sortOrder }
     }
 
     // MARK: - Body
@@ -31,8 +31,8 @@ struct EditScheduleSheet: View {
                 ForEach(dayBlocks) { block in
                     HStack(spacing: StackTheme.Spacing.sm) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(block.time)
-                                .font(.system(.caption, design: .monospaced))
+                            Text(ScheduleTime.display(block.time))
+                                .font(StackTheme.Typography.time)
                                 .foregroundStyle(StackTheme.Text.secondary)
                             Text(block.label)
                                 .font(StackTheme.Typography.body)
@@ -70,10 +70,8 @@ struct EditScheduleSheet: View {
             .scrollContentBackground(.hidden)
             .background(StackTheme.Background.elevated)
             .navigationTitle(dayName)
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.editMode, .constant(.active))
-            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -84,9 +82,7 @@ struct EditScheduleSheet: View {
                 }
             }
         }
-        #if os(iOS)
         .presentationDetents([.large])
-        #endif
         .presentationBackground(StackTheme.Background.elevated)
         .presentationCornerRadius(StackTheme.Radius.lg)
     }
@@ -96,9 +92,7 @@ struct EditScheduleSheet: View {
     @ViewBuilder
     private var addFormSection: some View {
         DatePicker("Time", selection: $newTime, displayedComponents: .hourAndMinute)
-            #if os(iOS)
             .datePickerStyle(.wheel)
-            #endif
             .listRowBackground(StackTheme.Background.surface)
 
         TextField("Title", text: $newTitle)
@@ -108,7 +102,7 @@ struct EditScheduleSheet: View {
 
         Picker("Category", selection: $newCategory) {
             ForEach(Self.categories, id: \.self) { cat in
-                Text(cat.capitalized).tag(cat)
+                Text(cat).tag(cat)
             }
         }
         .listRowBackground(StackTheme.Background.surface)
@@ -130,9 +124,7 @@ struct EditScheduleSheet: View {
     // MARK: - Helpers
 
     private var dayName: String {
-        let labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        let idx = max(0, min(selectedDay - 1, 6))
-        return labels[idx]
+        Weekday.fullName(for: selectedDay)
     }
 
     private func moveBlocks(from source: IndexSet, to destination: Int) {
@@ -146,16 +138,14 @@ struct EditScheduleSheet: View {
     private func commitNewBlock() {
         let title = newTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
-        let dow = (selectedDay - 2 + 7) % 7
         let cal = Calendar.current
-        let h = cal.component(.hour, from: newTime)
-        let m = cal.component(.minute, from: newTime)
-        let period = h >= 12 ? "pm" : "am"
-        let displayH = h == 0 ? 12 : h > 12 ? h - 12 : h
-        let timeStr = String(format: "%d:%02d%@", displayH, m, period)
+        let timeStr = ScheduleTime.string(
+            hour: cal.component(.hour, from: newTime),
+            minute: cal.component(.minute, from: newTime)
+        )
         let nextOrder = (dayBlocks.map(\.sortOrder).max() ?? -1) + 1
         let block = ScheduleBlock(
-            dayOfWeek: dow,
+            dayOfWeek: selectedDay,
             time: timeStr,
             label: title,
             category: newCategory,
@@ -164,7 +154,7 @@ struct EditScheduleSheet: View {
         context.insert(block)
         newTitle = ""
         newTime = Date()
-        newCategory = "morning"
+        newCategory = "Morning"
         showAddForm = false
     }
 }

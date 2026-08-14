@@ -1,26 +1,32 @@
 import Foundation
-#if os(iOS)
 import HealthKit
-#endif
+
+/// A single night of sleep pulled from HealthKit (e.g. synced from Fitbit
+/// via Google Health Connect → Apple Health).
+struct HKSleepNight: Identifiable {
+    let id = UUID()
+    let date: Date      // morning the sleep ended
+    let hours: Double
+}
 
 final class HealthKitService {
 
     static let shared = HealthKitService()
     private init() {}
 
-    // MARK: - iOS Implementation
-
-#if os(iOS)
     private let store = HKHealthStore()
     private let authKey = "healthKitAuthorized"
 
-    private var readTypes: Set<HKObjectType> {
+    /// Everything Stack reads. Wearable data (Fitbit etc.) lands in these same
+    /// types when synced into Apple Health.
+    static var readTypes: Set<HKObjectType> {
         [
             HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
             HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
         ]
     }
 
@@ -28,12 +34,14 @@ final class HealthKitService {
         guard !UserDefaults.standard.bool(forKey: authKey) else { return }
         guard HKHealthStore.isHealthDataAvailable() else { return }
         do {
-            try await store.requestAuthorization(toShare: [], read: readTypes)
+            try await store.requestAuthorization(toShare: [], read: Self.readTypes)
             UserDefaults.standard.set(true, forKey: authKey)
         } catch {
             // Silently ignore — user may have declined
         }
     }
+
+    // MARK: - Weight
 
     func fetchLatestWeight() async -> Double? {
         guard HKHealthStore.isHealthDataAvailable() else { return nil }
@@ -51,15 +59,38 @@ final class HealthKitService {
         }
     }
 
+    // MARK: - Sleep
+
     func fetchLastNightSleep() async -> Double? {
         guard HKHealthStore.isHealthDataAvailable() else { return nil }
         await requestAuthorizationIfNeeded()
+        return await sleepHours(endingOnMorningOf: Date())
+    }
+
+    /// One entry per night for the last `nights` nights (most recent last).
+    /// Nights with no data are skipped.
+    func fetchSleepHistory(nights: Int) async -> [HKSleepNight] {
+        guard HKHealthStore.isHealthDataAvailable() else { return [] }
+        await requestAuthorizationIfNeeded()
+        let cal = Calendar.current
+        var result: [HKSleepNight] = []
+        for offset in stride(from: nights - 1, through: 0, by: -1) {
+            guard let morning = cal.date(byAdding: .day, value: -offset, to: Date()) else { continue }
+            if let hours = await sleepHours(endingOnMorningOf: morning), hours > 0 {
+                result.append(HKSleepNight(date: cal.startOfDay(for: morning), hours: hours))
+            }
+        }
+        return result
+    }
+
+    /// Total asleep time between 8 PM the prior evening and 10 AM of `morning`.
+    private func sleepHours(endingOnMorningOf morning: Date) async -> Double? {
         let type = HKCategoryType(.sleepAnalysis)
         let cal = Calendar.current
-        let now = Date()
-        let yesterday = cal.date(byAdding: .day, value: -1, to: now)!
-        let start = cal.date(bySettingHour: 20, minute: 0, second: 0, of: yesterday)!
-        let end   = cal.date(bySettingHour: 10, minute: 0, second: 0, of: now)!
+        guard let evening = cal.date(byAdding: .day, value: -1, to: morning),
+              let start = cal.date(bySettingHour: 20, minute: 0, second: 0, of: evening),
+              let end   = cal.date(bySettingHour: 10, minute: 0, second: 0, of: morning)
+        else { return nil }
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictEndDate)
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
@@ -84,10 +115,36 @@ final class HealthKitService {
         }
     }
 
+    // MARK: - Activity
+
     func fetchTodayActiveCalories() async -> Int? {
+        await todaySum(of: HKQuantityType(.activeEnergyBurned), unit: .kilocalorie()).map(Int.init)
+    }
+
+    func fetchTodaySteps() async -> Int? {
+        await todaySum(of: HKQuantityType(.stepCount), unit: .count()).map(Int.init)
+    }
+
+    func fetchRestingHeartRate() async -> Int? {
         guard HKHealthStore.isHealthDataAvailable() else { return nil }
         await requestAuthorizationIfNeeded()
-        let type = HKQuantityType(.activeEnergyBurned)
+        let type = HKQuantityType(.restingHeartRate)
+        let sort = [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: type, predicate: nil, limit: 1, sortDescriptors: sort) { _, samples, _ in
+                guard let sample = samples?.first as? HKQuantitySample else {
+                    continuation.resume(returning: nil); return
+                }
+                let bpm = sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+                continuation.resume(returning: Int(bpm))
+            }
+            store.execute(query)
+        }
+    }
+
+    private func todaySum(of type: HKQuantityType, unit: HKUnit) async -> Double? {
+        guard HKHealthStore.isHealthDataAvailable() else { return nil }
+        await requestAuthorizationIfNeeded()
         let start = Calendar.current.startOfDay(for: Date())
         let predicate = HKQuery.predicateForSamples(withStart: start, end: Date(), options: .strictStartDate)
         return await withCheckedContinuation { continuation in
@@ -96,20 +153,9 @@ final class HealthKitService {
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, stats, _ in
-                if let sum = stats?.sumQuantity() {
-                    continuation.resume(returning: Int(sum.doubleValue(for: .kilocalorie())))
-                } else {
-                    continuation.resume(returning: nil)
-                }
+                continuation.resume(returning: stats?.sumQuantity()?.doubleValue(for: unit))
             }
             store.execute(query)
         }
     }
-
-// MARK: - macOS stubs
-#else
-    func fetchLatestWeight() async -> Double? { nil }
-    func fetchLastNightSleep() async -> Double? { nil }
-    func fetchTodayActiveCalories() async -> Int? { nil }
-#endif
 }

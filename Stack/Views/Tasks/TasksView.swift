@@ -76,9 +76,7 @@ struct TasksView: View {
             }
             .background(StackTheme.Background.base.ignoresSafeArea())
             .navigationTitle("Tasks")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
         }
         .onAppear { viewModel.setup(context: modelContext) }
         .alert("Delete task?", isPresented: Binding(

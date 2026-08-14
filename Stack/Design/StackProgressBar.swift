@@ -4,10 +4,6 @@ struct StackProgressBar: View {
     let value: Double          // 0.0 – 1.0
     var color: Color = StackTheme.Accent.primary
     var height: CGFloat = 4
-    // animated kept for call-site compatibility — always animates on appear
-    var animated: Bool = true
-    // trackColor kept for call-site compatibility — uses theme token
-    var trackColor: Color = StackTheme.Background.elevated
 
     @State private var animatedValue: Double = 0
 
@@ -20,6 +16,7 @@ struct StackProgressBar: View {
                 Capsule()
                     .fill(color)
                     .frame(width: geo.size.width * max(0, min(1, animatedValue)), height: height)
+                    .shadow(color: color.opacity(0.5), radius: height * 0.8)
                     .animation(.easeOut(duration: 0.6), value: animatedValue)
             }
         }

@@ -25,7 +25,7 @@ struct ScheduleSeedService {
         seed(in: context)
         try? context.save()
 
-        // clearAll cascade-deletes the old blocks' BlockItems, so reset the
+        // clearAll cascadehe old blocks' BlockItems, so reset the
         // block-item flag to let seedBlockItemsIfNeeded repopulate the fresh blocks.
         UserDefaults.standard.removeObject(forKey: "blockItemsSummerV1Seeded")
         UserDefaults.standard.set(scheduleSeedVersion, forKey: "scheduleSeedVersion")

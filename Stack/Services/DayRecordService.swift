@@ -11,9 +11,7 @@ enum DayRecordService {
         if let existing = (try? context.fetch(descriptor))?.first {
             return existing
         }
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        let date = fmt.date(from: dateKey) ?? Date()
+        let date = Date.fromDateKey(dateKey) ?? Date()
         let record = DayRecord(dateKey: dateKey, date: date)
         context.insert(record)
         return record

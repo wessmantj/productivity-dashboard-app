@@ -16,6 +16,7 @@ final class HealthViewModel {
     var hkWeight: Double?        = nil
     var hkSleep: Double?         = nil
     var hkCalories: Int?         = nil
+    var hkSleepHistory: [HKSleepNight] = []
     var isLoadingHealthData: Bool = false
 
     // MARK: - Computed
@@ -28,8 +29,26 @@ final class HealthViewModel {
         weightEntries.isEmpty && hkWeight != nil
     }
 
+    /// Last night's sleep — manual log wins, otherwise the wearable's number
+    /// synced through Apple Health.
+    var lastNightSleep: Double? {
+        sleepEntries.first?.hours ?? hkSleep
+    }
+
+    var sleepIsFromHK: Bool {
+        sleepEntries.isEmpty && hkSleep != nil
+    }
+
+    /// Chart data: manual entries when they exist, otherwise HealthKit history.
+    var sleepChart: [HKSleepNight] {
+        if !sleepEntries.isEmpty {
+            return last7Sleep.map { HKSleepNight(date: $0.date, hours: $0.hours) }
+        }
+        return hkSleepHistory
+    }
+
     var weeklyAvgSleep: Double {
-        let week = Array(sleepEntries.prefix(7))
+        let week = sleepChart.suffix(7)
         guard !week.isEmpty else { return 0 }
         return week.reduce(0) { $0 + $1.hours } / Double(week.count)
     }
@@ -95,11 +114,13 @@ final class HealthViewModel {
         async let w = svc.fetchLatestWeight()
         async let s = svc.fetchLastNightSleep()
         async let c = svc.fetchTodayActiveCalories()
-        let (weight, sleep, cal) = await (w, s, c)
+        async let h = svc.fetchSleepHistory(nights: 7)
+        let (weight, sleep, cal, history) = await (w, s, c, h)
         await MainActor.run {
             hkWeight          = weight
             hkSleep           = sleep
             hkCalories        = cal
+            hkSleepHistory    = history
             isLoadingHealthData = false
         }
     }

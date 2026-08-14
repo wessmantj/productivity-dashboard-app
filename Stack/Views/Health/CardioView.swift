@@ -133,7 +133,7 @@ struct CardioView: View {
 
             Spacer()
             Text(Self.dateF.string(from: entry.date))
-                .font(StackTheme.Typography.caption2)
+                .font(StackTheme.Typography.label)
                 .foregroundStyle(StackTheme.Text.tertiary)
         }
     }

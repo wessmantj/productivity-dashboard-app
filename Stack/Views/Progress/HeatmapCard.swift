@@ -73,10 +73,6 @@ struct HeatmapCard: View {
         return max(0, min(52, (diff + jan1Offset) / 7))
     }
 
-    private var fmt: DateFormatter {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
-    }
-
     // MARK: - Body
 
     var body: some View {
@@ -88,8 +84,12 @@ struct HeatmapCard: View {
                     heatmapGrid
                         .transition(.opacity.combined(with: .move(edge: .top)))
 
-                    legendRow
-                        .transition(.opacity)
+                    // Workout days are binary — a Low/Medium/High legend only
+                    // makes sense for the graded maps.
+                    if type != .workout {
+                        legendRow
+                            .transition(.opacity)
+                    }
                 }
             }
         }
@@ -174,7 +174,7 @@ struct HeatmapCard: View {
 
     @ViewBuilder
     private func cell(date: Date?, colIdx: Int, dict: [String: DayRecord]) -> some View {
-        let key      = date.map { fmt.string(from: $0) }
+        let key      = date.map { $0.dateKey }
         let record   = key.flatMap { dict[$0] }
         let lvl      = date != nil
             ? (record.map { viewModel.intensity(for: $0, type: type) } ?? .none)
@@ -229,12 +229,25 @@ struct HeatmapCard: View {
 
     // MARK: - Helpers
 
+    /// Protocol days are graded red → yellow → green like a Whoop recovery
+    /// score; workout days are a green scale; the overall map stays indigo.
     private func cellColor(_ level: IntensityLevel) -> Color {
-        switch level {
-        case .none:   return StackTheme.Background.elevated
-        case .low:    return StackTheme.Accent.primary.opacity(0.25)
-        case .medium: return StackTheme.Accent.primary.opacity(0.6)
-        case .high:   return StackTheme.Accent.primary
+        guard level != .none else { return StackTheme.Background.elevated }
+        switch type {
+        case .protocol_:
+            switch level {
+            case .low:    return StackTheme.Accent.negative.opacity(0.55)
+            case .medium: return StackTheme.Accent.warning.opacity(0.7)
+            default:      return StackTheme.Accent.positive
+            }
+        case .workout:
+            return StackTheme.Accent.positive
+        case .overall:
+            switch level {
+            case .low:    return StackTheme.Accent.primary.opacity(0.35)
+            case .medium: return StackTheme.Accent.primary.opacity(0.65)
+            default:      return StackTheme.Accent.primary
+            }
         }
     }
 }
@@ -270,9 +283,7 @@ private struct CellDetailSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(StackTheme.Background.elevated.ignoresSafeArea())
             .navigationTitle("")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

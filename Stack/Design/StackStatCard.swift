@@ -17,8 +17,8 @@ struct StackStatCard: View {
                     // Icon top-left
                     if !icon.isEmpty {
                         Image(systemName: icon)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(StackTheme.Accent.primary)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(iconColor)
                     }
 
                     // Value + unit
@@ -31,9 +31,10 @@ struct StackStatCard: View {
                             Text(value)
                                 .font(StackTheme.Typography.stat)
                                 .foregroundStyle(StackTheme.Text.primary)
+                                .monospacedDigit()
                             if !unit.isEmpty {
                                 Text(unit)
-                                    .font(StackTheme.Typography.subheadline)
+                                    .font(StackTheme.Typography.caption)
                                     .foregroundStyle(StackTheme.Text.secondary)
                             }
                         }
@@ -41,13 +42,14 @@ struct StackStatCard: View {
 
                     // Label + trend
                     HStack(spacing: StackTheme.Spacing.xs) {
-                        Text(label.uppercased())
-                            .font(StackTheme.Typography.label)
-                            .foregroundStyle(StackTheme.Text.secondary)
+                        StackLabel(label)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         if let trend {
                             Spacer()
                             Text(trend)
                                 .font(StackTheme.Typography.label)
+                                .monospacedDigit()
                                 .foregroundStyle(
                                     trend.hasPrefix("+")
                                         ? StackTheme.Accent.positive
@@ -57,7 +59,7 @@ struct StackStatCard: View {
                     }
                 }
             }
-            .frame(minHeight: 90, alignment: .leading)
+            .frame(minHeight: 96, alignment: .leading)
         }
         .buttonStyle(.plain)
         .disabled(action == nil)

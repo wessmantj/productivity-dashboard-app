@@ -19,20 +19,16 @@ struct StackSectionHeader: View {
 
     var body: some View {
         HStack {
-            Text(title.uppercased())
-                .font(StackTheme.Typography.label)
-                .foregroundStyle(StackTheme.Text.secondary)
+            StackLabel(title)
             Spacer()
             if let actionLabel, let action {
                 Button(action: action) {
-                    Text(actionLabel)
-                        .font(StackTheme.Typography.label)
-                        .foregroundStyle(StackTheme.Accent.primary)
+                    StackLabel(actionLabel, color: StackTheme.Accent.primary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
     }
 }

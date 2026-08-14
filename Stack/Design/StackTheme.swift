@@ -2,75 +2,68 @@ import SwiftUI
 
 enum StackTheme {
 
-    // BACKGROUNDS — charcoal base, no color tint
+    // BACKGROUNDS — near-black, Whoop-style depth
     enum Background {
-        static let base     = Color(hex: "#111114")  // root app background
-        static let surface  = Color(hex: "#1c1c1f")  // cards, rows
-        static let elevated = Color(hex: "#242428")  // sheets, overlays
-        static let input    = Color(hex: "#2a2a2e")  // text fields, pickers
-
-        // Legacy aliases
-        static let primary   = base
-        static let secondary = surface
-        static let card      = surface
+        static let base     = Color(hex: "#0a0a0d")  // root app background
+        static let surface  = Color(hex: "#151519")  // cards, rows
+        static let elevated = Color(hex: "#1e1e24")  // sheets, overlays, ring tracks
+        static let input    = Color(hex: "#26262c")  // text fields, pickers
     }
 
-    // BORDERS — used only on inputs and dividers, never on cards
+    // BORDERS — hairline strokes on cards and inputs
     enum Border {
-        static let subtle = Color(hex: "#2c2c30")
-        static let input  = Color(hex: "#38383d")
-
-        // Legacy aliases
-        static let `default` = subtle
-        static let strong    = input
+        static let subtle = Color(hex: "#232329")
+        static let input  = Color(hex: "#3a3a41")
     }
 
     // TEXT
     enum Text {
         static let primary   = Color.white
-        static let secondary = Color(hex: "#8e8e93")  // Apple gray
-        static let tertiary  = Color(hex: "#48484a")  // very muted
+        static let secondary = Color(hex: "#9b9ba3")
+        static let tertiary  = Color(hex: "#52525b")
     }
 
-    // SINGLE ACCENT — indigo throughout
+    // ACCENTS — indigo brand (logo) + metric state colors
     enum Accent {
-        static let primary  = Color(hex: "#6366f1")  // indigo — all interactive elements
-        static let soft     = Color(hex: "#6366f1").opacity(0.15)  // backgrounds behind accent elements
-        static let positive = Color(hex: "#30d158")  // Apple green — completion, success only
-        static let warning  = Color(hex: "#ffd60a")  // Apple yellow — warnings only
-        static let negative = Color(hex: "#ff453a")  // Apple red — errors, overdue only
-
-        // Legacy aliases
-        static let indigo  = primary
-        static let purple  = primary
-        static let blue    = primary
-        static let green   = positive
-        static let gold    = warning
-        static let red     = negative
-        static let orange  = warning
+        static let primary  = Color(hex: "#6366f1")  // indigo — brand, interactive elements
+        static let soft     = Color(hex: "#6366f1").opacity(0.15)
+        static let positive = Color(hex: "#32e575")  // state: good / complete
+        static let warning  = Color(hex: "#ffd60a")  // state: mid
+        static let negative = Color(hex: "#ff5147")  // state: poor / overdue
     }
 
-    // TYPOGRAPHY — Apple system font, Whoop-style hierarchy
+    /// Whoop-style state color for a 0–1 completion ratio.
+    static func stateColor(for ratio: Double) -> Color {
+        if ratio >= 0.8 { return Accent.positive }
+        if ratio >= 0.4 { return Accent.warning }
+        if ratio > 0    { return Accent.negative }
+        return Accent.primary
+    }
+
+    // TYPOGRAPHY — condensed technical numerals, uppercase micro-labels
     enum Typography {
-        static let hero        = Font.system(size: 52, weight: .bold, design: .rounded)
-        static let stat        = Font.system(size: 34, weight: .bold, design: .rounded)
-        static let metric      = Font.system(size: 22, weight: .semibold, design: .rounded)
-        static let title       = Font.system(.title2, design: .default, weight: .bold)
+        /// Giant gauge numerals (hero ring center)
+        static let hero        = Font.system(size: 64, weight: .heavy).width(.compressed)
+        /// Large stat numerals (stat cards, health heroes)
+        static let stat        = Font.system(size: 38, weight: .heavy).width(.condensed)
+        /// Mid-size metric numerals / card leads
+        static let metric      = Font.system(size: 22, weight: .bold).width(.condensed)
+        static let title       = Font.system(.title2, weight: .bold)
         static let headline    = Font.system(.headline)
         static let body        = Font.system(.body)
         static let callout     = Font.system(.callout)
         static let subheadline = Font.system(.subheadline)
         static let caption     = Font.system(.caption)
-        static let label       = Font.system(size: 11, weight: .medium)
-        static let quote       = Font.system(.body, design: .serif)
+        /// Uppercase micro-label — always pair with Tracking.label
+        static let label       = Font.system(size: 11, weight: .semibold)
+        /// Schedule / timestamp text
+        static let time        = Font.system(.caption, design: .monospaced, weight: .medium)
+    }
 
-        // Legacy aliases
-        static let largeTitle    = stat
-        static let heroNumber    = hero
-        static let statNumber    = stat
-        static let metricSmall   = metric
-        static let sectionHeader = label
-        static let caption2      = label
+    // LETTER-SPACING — apply via .tracking() alongside Typography.label
+    enum Tracking {
+        static let label: CGFloat = 1.4
+        static let wide:  CGFloat = 2.2
     }
 
     // SPACING

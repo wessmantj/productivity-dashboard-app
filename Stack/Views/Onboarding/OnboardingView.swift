@@ -1,8 +1,5 @@
 import SwiftUI
-#if os(iOS)
 import HealthKit
-import UserNotifications
-#endif
 
 // MARK: - Container
 
@@ -16,7 +13,7 @@ struct OnboardingView: View {
             StackTheme.Background.base.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Skip button — top right, hidden on page 3
+                // Skip button — top right, hidden on the last page
                 HStack {
                     Spacer()
                     Button("Skip", action: finish)
@@ -35,13 +32,11 @@ struct OnboardingView: View {
                         .tag(0)
                     FeaturesPage()
                         .tag(1)
-                    PermissionsPage()
+                    SetupPage()
                         .tag(2)
                 }
-                #if os(iOS)
                 .tabViewStyle(.page(indexDisplayMode: .always))
-                #endif
-                .tint(StackTheme.Accent.indigo)
+                .tint(StackTheme.Accent.primary)
 
                 // Bottom action button
                 bottomButton
@@ -50,9 +45,6 @@ struct OnboardingView: View {
                     .frame(height: 80, alignment: .top)
             }
         }
-        #if os(macOS)
-        .frame(width: 480, height: 640)
-        #endif
     }
 
     @ViewBuilder
@@ -68,7 +60,7 @@ struct OnboardingView: View {
                         .foregroundStyle(StackTheme.Text.primary)
                         .padding(.horizontal, 28)
                         .padding(.vertical, 14)
-                        .background(StackTheme.Accent.indigo)
+                        .background(StackTheme.Accent.primary)
                         .clipShape(RoundedRectangle(cornerRadius: StackTheme.Radius.md))
                 }
             }
@@ -79,7 +71,7 @@ struct OnboardingView: View {
                     .foregroundStyle(StackTheme.Text.primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(StackTheme.Accent.indigo)
+                    .background(StackTheme.Accent.primary)
                     .clipShape(RoundedRectangle(cornerRadius: StackTheme.Radius.md))
             }
         }
@@ -137,11 +129,11 @@ private struct FeaturesPage: View {
 
     @State private var appeared = false
 
-    private let features: [(icon: String, color: Color, title: String, desc: String)] = [
-        ("dumbbell.fill",      StackTheme.Accent.red,    "Fitness",  "Your workout split, supplements, and daily nutrition check"),
-        ("brain.head.profile", StackTheme.Accent.indigo, "Learning", "Track your ML roadmap, reading, and weekly study hours"),
-        ("star.fill",          StackTheme.Accent.gold,   "Vision",   "Daily quotes, goals, and affirmations to keep you locked in"),
-        ("checklist",          StackTheme.Accent.primary, "Protocol", "Your full daily system — morning to sleep — checked off every day"),
+    private let features: [(icon: String, title: String, desc: String)] = [
+        ("checklist",            "Protocol", "Your full daily system — morning to sleep — checked off every day"),
+        ("dumbbell.fill",        "Fitness",  "Weekly workout split, supplements, body, sleep, and cardio tracking"),
+        ("checkmark.circle.fill", "Tasks",    "A fast, frictionless list for everything else on your plate"),
+        ("chart.bar.fill",       "Progress", "Streaks and year-long heatmaps that show the work adding up"),
     ]
 
     var body: some View {
@@ -160,7 +152,7 @@ private struct FeaturesPage: View {
                     HStack(spacing: StackTheme.Spacing.md) {
                         Image(systemName: f.icon)
                             .font(.title2)
-                            .foregroundStyle(f.color)
+                            .foregroundStyle(StackTheme.Accent.primary)
                             .frame(width: 32)
 
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.xs) {
@@ -189,35 +181,51 @@ private struct FeaturesPage: View {
     }
 }
 
-// MARK: - Page 3: Permissions
+// MARK: - Page 3: Name + Permissions
 
-private struct PermissionsPage: View {
+private struct SetupPage: View {
 
-    @State private var healthGranted  = false
-    @State private var notifGranted   = false
+    @AppStorage("userName") private var userName = ""
+    @State private var healthGranted = false
+    @State private var notifGranted  = false
+    @FocusState private var nameFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer()
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("A couple of things")
+                Text("Make it yours")
                     .font(StackTheme.Typography.title)
                     .foregroundStyle(StackTheme.Text.primary)
 
-                Text("Stack works best with access to your health data and notifications.")
+                Text("Stack works best with your name, health data, and notifications.")
                     .font(StackTheme.Typography.body)
                     .foregroundStyle(StackTheme.Text.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, StackTheme.Spacing.xl)
 
-            Spacer().frame(height: 36)
+            Spacer().frame(height: 28)
 
-            VStack(spacing: StackTheme.Spacing.lg) {
+            VStack(spacing: StackTheme.Spacing.md) {
+                StackCard {
+                    HStack(spacing: StackTheme.Spacing.md) {
+                        Image(systemName: "person.fill")
+                            .font(.title2)
+                            .foregroundStyle(StackTheme.Accent.primary)
+                            .frame(width: 32)
+                        TextField("Your name", text: $userName)
+                            .font(StackTheme.Typography.body)
+                            .foregroundStyle(StackTheme.Text.primary)
+                            .focused($nameFocused)
+                            .onSubmit { nameFocused = false }
+                    }
+                }
+
                 PermissionRow(
                     icon: "heart.fill",
-                    iconColor: StackTheme.Accent.red,
+                    iconColor: StackTheme.Accent.negative,
                     title: "Apple Health",
                     description: "Pulls your weight, sleep, and activity automatically",
                     isGranted: healthGranted,
@@ -225,9 +233,9 @@ private struct PermissionsPage: View {
                 )
                 PermissionRow(
                     icon: "bell.fill",
-                    iconColor: StackTheme.Accent.indigo,
+                    iconColor: StackTheme.Accent.primary,
                     title: "Notifications",
-                    description: "Reminds you of tasks and daily check-ins",
+                    description: "Reminds you of your protocol and daily check-ins",
                     isGranted: notifGranted,
                     action: requestNotifications
                 )
@@ -240,33 +248,22 @@ private struct PermissionsPage: View {
     }
 
     private func requestHealth() {
-        #if os(iOS)
         guard HKHealthStore.isHealthDataAvailable() else { healthGranted = true; return }
         let store = HKHealthStore()
-        let types: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-        ]
-        store.requestAuthorization(toShare: [], read: types) { _, _ in
-            DispatchQueue.main.async { healthGranted = true }
+        store.requestAuthorization(toShare: [], read: HealthKitService.readTypes) { _, _ in
+            DispatchQueue.main.async {
+                UserDefaults.standard.set(true, forKey: "healthKitAuthorized")
+                healthGranted = true
+            }
         }
-        #else
-        healthGranted = true
-        #endif
     }
 
     private func requestNotifications() {
-        #if os(iOS)
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: [.alert, .sound, .badge]
-        ) { granted, _ in
-            DispatchQueue.main.async { notifGranted = granted }
+        Task {
+            let granted = await NotificationService.requestAuthorization()
+            notifGranted = granted
+            if granted { NotificationService.syncFromPreferences() }
         }
-        #else
-        notifGranted = true
-        #endif
     }
 }
 
@@ -302,7 +299,7 @@ private struct PermissionRow: View {
                 Spacer()
 
                 if isGranted {
-                    StackBadge(text: "✓", color: StackTheme.Accent.green, style: .filled)
+                    StackBadge(text: "✓", color: StackTheme.Accent.positive, style: .filled)
                         .transition(.scale.combined(with: .opacity))
                 } else {
                     Button("Allow", action: action)
@@ -310,7 +307,7 @@ private struct PermissionRow: View {
                         .foregroundStyle(StackTheme.Text.primary)
                         .padding(.horizontal, StackTheme.Spacing.md)
                         .padding(.vertical, StackTheme.Spacing.sm)
-                        .background(StackTheme.Accent.indigo)
+                        .background(StackTheme.Accent.primary)
                         .clipShape(RoundedRectangle(cornerRadius: StackTheme.Radius.sm))
                 }
             }

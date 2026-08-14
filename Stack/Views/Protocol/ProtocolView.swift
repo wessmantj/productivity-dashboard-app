@@ -9,9 +9,6 @@ struct ProtocolView: View {
     @State private var viewModel = ProtocolViewModel()
     @State private var showEditSheet = false
 
-    // Mon-first display with corresponding Calendar.weekday values (1=Sun, 2=Mon…7=Sat)
-    private static let dayLabels   = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    private static let dayWeekdays = [2, 3, 4, 5, 6, 7, 1]
 
     // MARK: - Body
 
@@ -32,41 +29,41 @@ struct ProtocolView: View {
         }
         .background(StackTheme.Background.base.ignoresSafeArea())
         .navigationTitle("Protocol")
-        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
         .sheet(isPresented: $showEditSheet) {
             EditScheduleSheet(selectedDay: viewModel.selectedDay)
         }
         .onAppear {
-            viewModel.selectedDay = Calendar.current.component(.weekday, from: Date())
+            viewModel.selectedDay = Weekday.today
         }
     }
 
     // MARK: - Header
 
     private var headerArea: some View {
-        VStack(spacing: StackTheme.Spacing.sm) {
+        VStack(spacing: StackTheme.Spacing.md) {
             dayPicker
             let counts = viewModel.completionCount(for: viewModel.selectedDay, from: allBlocks)
             let ratio = counts.total > 0 ? Double(counts.completed) / Double(counts.total) : 0.0
-            HStack {
-                Text("\(counts.completed) of \(counts.total) complete")
-                    .font(StackTheme.Typography.caption)
-                    .foregroundStyle(StackTheme.Text.secondary)
-                Spacer()
+            let color = StackTheme.stateColor(for: ratio)
+            VStack(spacing: StackTheme.Spacing.sm) {
+                HStack {
+                    StackLabel("\(counts.completed) of \(counts.total) complete",
+                               color: StackTheme.Text.secondary)
+                    Spacer()
+                    Text("\(Int(ratio * 100))%")
+                        .font(StackTheme.Typography.metric)
+                        .monospacedDigit()
+                        .foregroundStyle(color)
+                        .contentTransition(.numericText())
+                        .animation(.easeOut(duration: 0.4), value: ratio)
+                }
+                StackProgressBar(value: ratio, color: color, height: 6)
             }
-            StackProgressBar(value: ratio, color: progressColor(ratio), height: 6, animated: true)
         }
         .padding(.horizontal, StackTheme.Spacing.md)
         .padding(.top, StackTheme.Spacing.md)
         .padding(.bottom, StackTheme.Spacing.sm)
-    }
-
-    private func progressColor(_ ratio: Double) -> Color {
-        if ratio > 0.8 { return StackTheme.Accent.positive }
-        if ratio > 0.4 { return StackTheme.Accent.warning }
-        return StackTheme.Accent.negative
     }
 
     // MARK: - Day picker
@@ -74,15 +71,14 @@ struct ProtocolView: View {
     private var dayPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: StackTheme.Spacing.xs) {
-                ForEach(0..<7, id: \.self) { i in
-                    let weekday = Self.dayWeekdays[i]
+                ForEach(Weekday.mondayFirst, id: \.self) { weekday in
                     Button {
                         withAnimation(.spring(duration: 0.25)) {
                             viewModel.selectedDay = weekday
                         }
                     } label: {
                         StackBadge(
-                            text: Self.dayLabels[i],
+                            text: Weekday.shortName(for: weekday),
                             color: StackTheme.Accent.primary,
                             style: viewModel.selectedDay == weekday ? .filled : .subtle
                         )
@@ -99,7 +95,7 @@ struct ProtocolView: View {
     @ViewBuilder
     private var blockList: some View {
         let dayBlocks = viewModel.blocks(for: viewModel.selectedDay, from: allBlocks)
-        let isToday = viewModel.selectedDay == Calendar.current.component(.weekday, from: Date())
+        let isToday = viewModel.selectedDay == Weekday.today
         let currentID = isToday ? viewModel.currentBlockID(for: dayBlocks) : nil
 
         if dayBlocks.isEmpty {
@@ -132,9 +128,11 @@ struct ProtocolView: View {
 
                 HStack(spacing: StackTheme.Spacing.sm) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(formattedTime(block.time))
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(StackTheme.Text.secondary)
+                        Text(ScheduleTime.display(block.time))
+                            .font(StackTheme.Typography.time)
+                            .foregroundStyle(isCurrent
+                                ? StackTheme.Accent.primary
+                                : StackTheme.Text.secondary)
                         Text(block.label)
                             .font(StackTheme.Typography.body)
                             .foregroundStyle(StackTheme.Text.primary)
@@ -163,6 +161,7 @@ struct ProtocolView: View {
                         .buttonStyle(.plain)
 
                         Button {
+                            completionHaptic()
                             withAnimation(.spring(duration: 0.2)) {
                                 viewModel.toggleBlockCompletion(block, context: context)
                                 updateDayRecord()
@@ -179,6 +178,7 @@ struct ProtocolView: View {
                         .buttonStyle(.plain)
                     } else {
                         Button {
+                            completionHaptic()
                             withAnimation(.spring(duration: 0.2)) {
                                 toggleBlock(block)
                             }
@@ -229,6 +229,7 @@ struct ProtocolView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Button {
+                completionHaptic()
                 withAnimation(.spring(duration: 0.2)) {
                     viewModel.toggleItemCompletion(item, context: context)
                     updateDayRecord()
@@ -269,6 +270,10 @@ struct ProtocolView: View {
 
     // MARK: - Actions
 
+    private func completionHaptic() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
     private func toggleBlock(_ block: ScheduleBlock) {
         block.lastCompletedDate = block.isCompletedToday ? nil : Date()
         try? context.save()
@@ -276,34 +281,14 @@ struct ProtocolView: View {
     }
 
     private func updateDayRecord() {
-        let todayWeekday = Calendar.current.component(.weekday, from: Date())
-        let todayBlocks = viewModel.blocks(for: todayWeekday, from: allBlocks)
+        let todayBlocks = viewModel.blocks(for: Weekday.today, from: allBlocks)
         let completed = todayBlocks.filter { $0.isCompletedToday }.count
         let total = todayBlocks.count
         let ratio = total > 0 ? Double(completed) / Double(total) : 0.0
-        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
-        DayRecordService.updateProtocol(ratio: ratio, for: fmt.string(from: Date()), in: context)
+        DayRecordService.updateProtocol(ratio: ratio, for: Date().dateKey, in: context)
     }
 
     // MARK: - Helpers
-
-    private func formattedTime(_ timeStr: String) -> String {
-        let s = timeStr.lowercased().trimmingCharacters(in: .whitespaces)
-        guard s != "variable", s != "all day" else { return timeStr }
-        let isPM = s.hasSuffix("pm")
-        let isAM = s.hasSuffix("am")
-        guard isPM || isAM else { return timeStr }
-        let period = isPM ? "PM" : "AM"
-        let clean = s
-            .replacingOccurrences(of: "pm", with: "")
-            .replacingOccurrences(of: "am", with: "")
-            .trimmingCharacters(in: .whitespaces)
-        let parts = clean.split(separator: ":").compactMap { Int($0) }
-        guard !parts.isEmpty else { return timeStr }
-        let h = parts[0]
-        let m = parts.count > 1 ? parts[1] : 0
-        return String(format: "%d:%02d %@", h, m, period)
-    }
 
     private func categoryColor(for category: String) -> Color {
         switch category.lowercased() {

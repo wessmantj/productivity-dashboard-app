@@ -55,12 +55,17 @@ final class ProgressViewModel {
         var checkDate = Date()
         let cal = Calendar.current
         let dict = recordsByKey
+
+        // Today not being logged yet shouldn't zero the streak — start
+        // counting from yesterday in that case.
+        if let record = dict[checkDate.dateKey], isActive(record) {
+            streak += 1
+        }
         while true {
-            let key = dateKey(from: checkDate)
-            if let record = dict[key], isActive(record) {
+            guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
+            checkDate = prev
+            if let record = dict[checkDate.dateKey], isActive(record) {
                 streak += 1
-                guard let prev = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
-                checkDate = prev
             } else {
                 break
             }
@@ -118,16 +123,10 @@ final class ProgressViewModel {
     // MARK: - Helpers
 
     var recordsByKey: [String: DayRecord] {
-        Dictionary(uniqueKeysWithValues: allRecords.map { ($0.dateKey, $0) })
+        Dictionary(allRecords.map { ($0.dateKey, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     private func isActive(_ record: DayRecord) -> Bool {
         record.protocolRatio > 0 || record.workoutCompleted
-    }
-
-    private func dateKey(from date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        return fmt.string(from: date)
     }
 }

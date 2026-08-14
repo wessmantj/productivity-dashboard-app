@@ -8,11 +8,11 @@ struct TodayWorkoutView: View {
 
     let viewModel: FitnessViewModel
 
-    @State private var showCompletionBurst = false
     @State private var supplementToDelete: Supplement?
+    @State private var showAddSupplement = false
 
     private var todayWorkout: WorkoutDay? {
-        allWorkouts.first { $0.dayOfWeek == viewModel.todayWeekday }
+        allWorkouts.first { $0.dayOfWeek == Weekday.today }
     }
 
     var body: some View {
@@ -34,6 +34,7 @@ struct TodayWorkoutView: View {
             .padding(StackTheme.Spacing.md)
         }
         .background(StackTheme.Background.base.ignoresSafeArea())
+        .onAppear { viewModel.refreshNutritionStatus() }
     }
 
     // MARK: - Rest Day
@@ -72,33 +73,40 @@ struct TodayWorkoutView: View {
 
     @ViewBuilder
     private func workoutCard(_ workout: WorkoutDay) -> some View {
+        let progress = viewModel.progress(for: workout)
         StackCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                // Header
-                HStack(alignment: .top) {
+                // Header — title + completion ring
+                HStack(alignment: .center, spacing: StackTheme.Spacing.md) {
                     VStack(alignment: .leading, spacing: StackTheme.Spacing.xs) {
+                        StackLabel(Date().longDisplay, color: StackTheme.Text.tertiary)
                         Text(workout.muscleGroup)
                             .font(StackTheme.Typography.title)
                             .foregroundStyle(StackTheme.Text.primary)
-                        Text(todayLabel)
-                            .font(StackTheme.Typography.caption)
-                            .foregroundStyle(StackTheme.Text.secondary)
                     }
                     Spacer()
-                    Image(systemName: "dumbbell.fill")
-                        .font(.title2)
-                        .foregroundStyle(StackTheme.Accent.primary)
+                    StackRing(
+                        value: progress,
+                        color: workout.isCompleted
+                            ? StackTheme.Accent.positive
+                            : StackTheme.Accent.primary,
+                        lineWidth: 6,
+                        size: 52,
+                        glow: workout.isCompleted
+                    ) {
+                        if workout.isCompleted {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 16, weight: .heavy))
+                                .foregroundStyle(StackTheme.Accent.positive)
+                        } else {
+                            Text("\(Int(progress * 100))")
+                                .font(StackTheme.Typography.label)
+                                .monospacedDigit()
+                                .foregroundStyle(StackTheme.Text.secondary)
+                        }
+                    }
                 }
                 .padding(StackTheme.Spacing.md)
-
-                // Progress bar
-                StackProgressBar(
-                    value: viewModel.progress(for: workout),
-                    color: workout.isCompleted ? StackTheme.Accent.positive : StackTheme.Accent.primary,
-                    height: 6
-                )
-                .padding(.horizontal, StackTheme.Spacing.md)
-                .padding(.bottom, StackTheme.Spacing.md)
 
                 // Exercises
                 let sorted = workout.exercises.sorted { $0.sortOrder < $1.sortOrder }
@@ -144,13 +152,7 @@ struct TodayWorkoutView: View {
     @ViewBuilder
     private func completeButton(_ workout: WorkoutDay) -> some View {
         Button {
-            withAnimation(.spring(duration: 0.5, bounce: 0.3)) {
-                viewModel.completeWorkout(workout)
-                showCompletionBurst = true
-            }
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-            #endif
+            completeWorkout(workout)
         } label: {
             Label("Complete Workout", systemImage: "flame.fill")
                 .font(StackTheme.Typography.headline)
@@ -167,12 +169,14 @@ struct TodayWorkoutView: View {
 
     private var supplementsSection: some View {
         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
-            StackSectionHeader(title: "SUPPLEMENTS")
+            StackSectionHeader(title: "SUPPLEMENTS", actionLabel: "Add") {
+                showAddSupplement = true
+            }
 
             StackCard {
                 VStack(alignment: .leading, spacing: 0) {
                     if supplements.isEmpty {
-                        Text("No supplements added yet.")
+                        Text("No supplements yet. Tap Add to build your stack.")
                             .font(StackTheme.Typography.body)
                             .foregroundStyle(StackTheme.Text.secondary)
                     } else {
@@ -184,7 +188,6 @@ struct TodayWorkoutView: View {
                             }
                             SupplementRowView(supplement: supplement) {
                                 supplement.isTakenToday.toggle()
-                                supplement.lastResetDate = Date()
                             } onDelete: {
                                 supplementToDelete = supplement
                             }
@@ -193,7 +196,9 @@ struct TodayWorkoutView: View {
                 }
             }
         }
-        .onAppear { viewModel.resetSupplementsIfNeeded(supplements) }
+        .sheet(isPresented: $showAddSupplement) {
+            AddSupplementSheet()
+        }
         .alert("Delete supplement?", isPresented: Binding(
             get: { supplementToDelete != nil },
             set: { if !$0 { supplementToDelete = nil } }
@@ -219,7 +224,7 @@ struct TodayWorkoutView: View {
                     ForEach(FitnessViewModel.NutritionStatus.allCases, id: \.self) { status in
                         let isSelected = viewModel.nutritionStatus == status
                         Button {
-                            viewModel.nutritionStatus = status
+                            viewModel.setNutritionStatus(status)
                         } label: {
                             StackBadge(
                                 text: status.label,
@@ -236,22 +241,17 @@ struct TodayWorkoutView: View {
 
     // MARK: - Helpers
 
-    private var todayLabel: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "EEEE, MMMM d"
-        return fmt.string(from: Date())
+    private func completeWorkout(_ workout: WorkoutDay) {
+        withAnimation(.spring(duration: 0.5, bounce: 0.3)) {
+            viewModel.completeWorkout(workout)
+        }
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
     }
 
     private func autoCompleteIfNeeded(_ workout: WorkoutDay) {
-        let allDone = workout.exercises.allSatisfy(\.isCompleted)
+        let allDone = !workout.exercises.isEmpty && workout.exercises.allSatisfy(\.isCompleted)
         if allDone && !workout.isCompleted {
-            withAnimation(.spring(duration: 0.5, bounce: 0.3)) {
-                viewModel.completeWorkout(workout)
-                showCompletionBurst = true
-            }
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-            #endif
+            completeWorkout(workout)
         }
     }
 
@@ -261,5 +261,54 @@ struct TodayWorkoutView: View {
         case .okay:     return StackTheme.Accent.warning
         case .offTrack: return StackTheme.Accent.negative
         }
+    }
+}
+
+// MARK: - Add Supplement sheet
+
+private struct AddSupplementSheet: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name = ""
+    @State private var dose = ""
+    @State private var time = "Morning"
+
+    private static let times = ["Morning", "Pre-Workout", "Post-Workout", "Evening"]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Name (e.g. Creatine)", text: $name)
+                TextField("Dose (e.g. 5g)", text: $dose)
+                Picker("Time", selection: $time) {
+                    ForEach(Self.times, id: \.self) { Text($0) }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(StackTheme.Background.elevated)
+            .navigationTitle("New Supplement")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        let supplement = Supplement(
+                            name: name.trimmingCharacters(in: .whitespaces),
+                            dose: dose.trimmingCharacters(in: .whitespaces),
+                            time: time
+                        )
+                        context.insert(supplement)
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationBackground(StackTheme.Background.elevated)
+        .presentationCornerRadius(StackTheme.Radius.lg)
     }
 }

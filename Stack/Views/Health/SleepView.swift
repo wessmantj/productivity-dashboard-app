@@ -15,17 +15,17 @@ struct SleepView: View {
                 // MARK: — Sleep stats card
                 sleepCard
 
-                // MARK: — 7-night chart
-                if viewModel.last7Sleep.count >= 2 {
+                // MARK: — 7-night chart (manual logs, or Fitbit data via Apple Health)
+                if viewModel.sleepChart.count >= 2 {
                     sleepChart
                 }
 
                 // MARK: — Empty state
-                if viewModel.sleepEntries.isEmpty && !viewModel.isLoadingHealthData {
+                if viewModel.sleepChart.isEmpty && !viewModel.isLoadingHealthData {
                     ContentUnavailableView(
-                        "No sleep logged",
+                        "No sleep data",
                         systemImage: "moon.zzz.fill",
-                        description: Text("Tap \"Log Sleep\" above to track your first night.")
+                        description: Text("Log a night above, or let your watch sync sleep into Apple Health.")
                     )
                 }
 
@@ -69,49 +69,69 @@ struct SleepView: View {
 
     // MARK: — Sleep card
 
+    private let sleepGoal: Double = 8
+
     private var sleepCard: some View {
         StackCard {
             VStack(alignment: .leading, spacing: StackTheme.Spacing.md) {
                 HStack {
-                    Label("Sleep", systemImage: "moon.zzz.fill")
-                        .font(StackTheme.Typography.headline)
-                        .foregroundStyle(StackTheme.Accent.primary)
+                    StackLabel("Last night")
                     Spacer()
-                    if viewModel.hkSleep != nil && viewModel.sleepEntries.isEmpty {
-                        StackBadge(text: "Apple Health", color: StackTheme.Accent.primary, style: .subtle)
+                    if viewModel.sleepIsFromHK {
+                        StackBadge(text: "Fitbit · Health", color: StackTheme.Accent.primary, style: .subtle)
                     }
                 }
 
-                if viewModel.isLoadingHealthData && viewModel.sleepEntries.isEmpty && viewModel.hkSleep == nil {
+                if viewModel.isLoadingHealthData && viewModel.lastNightSleep == nil {
                     ProgressView()
-                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .frame(maxWidth: .infinity, minHeight: 150)
                         .tint(StackTheme.Accent.primary)
                 } else {
-                    HStack(alignment: .bottom, spacing: StackTheme.Spacing.lg) {
-                        // Last night hero number
-                        if let hrs = viewModel.sleepEntries.first?.hours ?? viewModel.hkSleep {
-                            HStack(alignment: .lastTextBaseline, spacing: StackTheme.Spacing.xs) {
-                                Text(String(format: "%.1f", hrs))
-                                    .font(StackTheme.Typography.heroNumber)
-                                    .foregroundStyle(sleepColor(hrs))
-                                Text("hrs")
-                                    .font(StackTheme.Typography.caption)
-                                    .foregroundStyle(StackTheme.Text.secondary)
+                    // Whoop-style sleep performance ring vs the 8h goal
+                    HStack(spacing: StackTheme.Spacing.xl) {
+                        let hrs = viewModel.lastNightSleep
+                        StackRing(
+                            value: min(1, (hrs ?? 0) / sleepGoal),
+                            color: hrs.map(sleepColor) ?? StackTheme.Accent.primary,
+                            lineWidth: 11,
+                            size: 140
+                        ) {
+                            VStack(spacing: 2) {
+                                if let hrs {
+                                    Text(String(format: "%.1f", hrs))
+                                        .font(StackTheme.Typography.stat)
+                                        .monospacedDigit()
+                                        .foregroundStyle(sleepColor(hrs))
+                                } else {
+                                    Text("—")
+                                        .font(StackTheme.Typography.stat)
+                                        .foregroundStyle(StackTheme.Text.tertiary)
+                                }
+                                StackLabel("of \(Int(sleepGoal))h", color: StackTheme.Text.tertiary)
                             }
-                        } else {
-                            Text("—")
-                                .font(StackTheme.Typography.heroNumber)
-                                .foregroundStyle(StackTheme.Text.tertiary)
                         }
 
-                        // Weekly average badge
-                        if viewModel.weeklyAvgSleep > 0 {
-                            StackBadge(
-                                text: String(format: "%.1f hrs avg", viewModel.weeklyAvgSleep),
-                                color: StackTheme.Accent.primary,
-                                style: .subtle
-                            )
+                        VStack(alignment: .leading, spacing: StackTheme.Spacing.md) {
+                            if let hrs = viewModel.lastNightSleep {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    StackLabel("Performance", color: StackTheme.Text.tertiary)
+                                    Text("\(Int(min(1, hrs / sleepGoal) * 100))%")
+                                        .font(StackTheme.Typography.metric)
+                                        .monospacedDigit()
+                                        .foregroundStyle(sleepColor(hrs))
+                                }
+                            }
+                            if viewModel.weeklyAvgSleep > 0 {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    StackLabel("7-night avg", color: StackTheme.Text.tertiary)
+                                    Text(String(format: "%.1f hrs", viewModel.weeklyAvgSleep))
+                                        .font(StackTheme.Typography.metric)
+                                        .monospacedDigit()
+                                        .foregroundStyle(StackTheme.Text.primary)
+                                }
+                            }
                         }
+                        Spacer(minLength: 0)
                     }
                 }
 
@@ -139,29 +159,33 @@ struct SleepView: View {
             VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                 StackSectionHeader(title: "7-Night Overview")
 
-                Chart(viewModel.last7Sleep) { entry in
+                Chart(viewModel.sleepChart) { night in
                     BarMark(
-                        x: .value("Date", entry.date, unit: .day),
-                        y: .value("Hours", entry.hours)
+                        x: .value("Date", night.date, unit: .day),
+                        y: .value("Hours", night.hours)
                     )
-                    .foregroundStyle(barColor(entry.hours))
+                    .foregroundStyle(barColor(night.hours))
                     .cornerRadius(5)
+
+                    RuleMark(y: .value("Goal", sleepGoal))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        .foregroundStyle(StackTheme.Text.tertiary)
                 }
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day)) {
                         AxisValueLabel(format: .dateTime.weekday(.narrow))
-                            .font(StackTheme.Typography.caption2)
+                            .font(StackTheme.Typography.label)
                             .foregroundStyle(StackTheme.Text.tertiary)
                     }
                 }
                 .chartYAxis {
                     AxisMarks(position: .leading) {
                         AxisValueLabel()
-                            .font(StackTheme.Typography.caption2)
+                            .font(StackTheme.Typography.label)
                             .foregroundStyle(StackTheme.Text.tertiary)
                     }
                 }
-                .chartPlotStyle { $0.background(StackTheme.Background.card) }
+                .chartPlotStyle { $0.background(StackTheme.Background.surface) }
                 .frame(height: 160)
             }
         }

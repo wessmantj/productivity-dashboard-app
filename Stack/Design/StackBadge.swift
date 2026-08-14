@@ -1,33 +1,43 @@
 import SwiftUI
 
 struct StackBadge: View {
-    // .outlined kept as alias for .subtle — call sites compile without changes
-    enum Style { case filled, subtle, outlined }
+    enum Style { case filled, subtle }
 
     let text: String
     var color: Color = StackTheme.Accent.primary
     var style: Style = .subtle
+    /// Text color when filled — black reads best on the bright state colors,
+    /// white on indigo.
+    var filledForeground: Color = .white
 
     var body: some View {
-        Text(text)
+        Text(text.uppercased())
             .font(StackTheme.Typography.label)
-            .padding(.vertical, 4)
+            .tracking(StackTheme.Tracking.label)
+            .padding(.vertical, 5)
             .padding(.horizontal, 10)
             .foregroundStyle(foreground)
-            .background(background, in: Capsule())
+            .background(background, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(
+                        style == .subtle ? color.opacity(0.35) : .clear,
+                        lineWidth: 1
+                    )
+            )
     }
 
     private var foreground: Color {
         switch style {
-        case .filled:             return .white
-        case .subtle, .outlined:  return color
+        case .filled: return filledForeground
+        case .subtle: return color
         }
     }
 
     private var background: Color {
         switch style {
-        case .filled:             return color
-        case .subtle, .outlined:  return StackTheme.Accent.soft
+        case .filled: return color
+        case .subtle: return color.opacity(0.12)
         }
     }
 }

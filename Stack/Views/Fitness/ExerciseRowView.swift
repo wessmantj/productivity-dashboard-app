@@ -17,7 +17,7 @@ struct ExerciseRowView: View {
                             .foregroundStyle(.white)
                     } else {
                         Circle()
-                            .strokeBorder(StackTheme.Border.default, lineWidth: 1.5)
+                            .strokeBorder(StackTheme.Border.subtle, lineWidth: 1.5)
                             .frame(width: 26, height: 26)
                     }
                 }
@@ -32,16 +32,13 @@ struct ExerciseRowView: View {
                     .strikethrough(exercise.isCompleted, color: StackTheme.Text.tertiary)
 
                 HStack(spacing: 6) {
-                    Text("\(exercise.sets) sets · \(exercise.reps) reps")
-                        .font(StackTheme.Typography.caption)
+                    Text("\(exercise.sets) × \(exercise.reps)")
+                        .font(StackTheme.Typography.time)
                         .foregroundStyle(StackTheme.Text.secondary)
                     if !exercise.weight.isEmpty {
-                        Text("·")
-                            .font(StackTheme.Typography.caption)
-                            .foregroundStyle(StackTheme.Text.secondary)
-                        Text(exercise.weight)
-                            .font(StackTheme.Typography.caption)
-                            .foregroundStyle(StackTheme.Text.secondary)
+                        Text("· \(exercise.weight)")
+                            .font(StackTheme.Typography.time)
+                            .foregroundStyle(StackTheme.Text.tertiary)
                     }
                 }
             }

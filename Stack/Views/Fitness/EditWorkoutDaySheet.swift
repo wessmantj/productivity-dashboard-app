@@ -15,8 +15,6 @@ struct EditWorkoutDaySheet: View {
     @State private var newReps = "8-12"
     @State private var newWeight = ""
 
-    private static let dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-
     init(workout: WorkoutDay) {
         self.workout = workout
         _isRestDay    = State(initialValue: workout.isRestDay)
@@ -32,7 +30,7 @@ struct EditWorkoutDaySheet: View {
                         TextField("Muscle Group", text: $muscleGroup)
                     }
                 } header: {
-                    Text(Self.dayNames[safe: workout.dayOfWeek] ?? "Day")
+                    Text(Weekday.fullName(for: workout.dayOfWeek))
                 }
 
                 if !isRestDay {
@@ -59,9 +57,7 @@ struct EditWorkoutDaySheet: View {
             .scrollContentBackground(.hidden)
             .background(StackTheme.Background.elevated)
             .navigationTitle("Edit Day")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -69,7 +65,7 @@ struct EditWorkoutDaySheet: View {
                         workout.muscleGroup = isRestDay ? "Rest" : muscleGroup
                         dismiss()
                     }
-                    .foregroundStyle(StackTheme.Accent.indigo)
+                    .foregroundStyle(StackTheme.Accent.primary)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
@@ -89,18 +85,14 @@ struct EditWorkoutDaySheet: View {
             Form {
                 TextField("Exercise name", text: $newName)
                 TextField("Sets", text: $newSets)
-                    #if os(iOS)
                     .keyboardType(.numberPad)
-                    #endif
                 TextField("Reps (e.g. 8-12)", text: $newReps)
                 TextField("Weight (optional)", text: $newWeight)
             }
             .scrollContentBackground(.hidden)
             .background(StackTheme.Background.elevated)
             .navigationTitle("New Exercise")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
@@ -118,7 +110,7 @@ struct EditWorkoutDaySheet: View {
                         showAddExercise = false
                     }
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .foregroundStyle(StackTheme.Accent.indigo)
+                    .foregroundStyle(StackTheme.Accent.primary)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showAddExercise = false }
@@ -155,9 +147,7 @@ private struct ExerciseEditRow: View {
                 .onChange(of: name)   { exercise.name = name }
             HStack {
                 TextField("Sets", text: $sets)
-                    #if os(iOS)
                     .keyboardType(.numberPad)
-                    #endif
                     .onChange(of: sets)   { exercise.sets = Int(sets) ?? exercise.sets }
                 Text("×")
                     .foregroundStyle(StackTheme.Text.secondary)
@@ -170,12 +160,5 @@ private struct ExerciseEditRow: View {
             .foregroundStyle(StackTheme.Text.secondary)
         }
         .padding(.vertical, 2)
-    }
-}
-
-// Safe subscript on Array
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

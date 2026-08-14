@@ -20,7 +20,7 @@ struct LogCardioSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("ACTIVITY")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             Picker("Type", selection: $type) {
                                 ForEach(Self.types, id: \.self) { Text($0).tag($0) }
@@ -33,7 +33,7 @@ struct LogCardioSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("DURATION")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             Stepper("\(duration) minutes", value: $duration, in: 5...180, step: 5)
                                 .font(StackTheme.Typography.body)
@@ -45,15 +45,13 @@ struct LogCardioSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.md) {
                             Text("OPTIONAL DETAILS")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             HStack {
                                 TextField("Distance", text: $distText)
                                     .font(StackTheme.Typography.body)
                                     .foregroundStyle(StackTheme.Text.primary)
-                                    #if os(iOS)
                                     .keyboardType(.decimalPad)
-                                    #endif
                                 Text("miles")
                                     .font(StackTheme.Typography.body)
                                     .foregroundStyle(StackTheme.Text.secondary)
@@ -64,9 +62,7 @@ struct LogCardioSheet: View {
                                 TextField("Calories", text: $calText)
                                     .font(StackTheme.Typography.body)
                                     .foregroundStyle(StackTheme.Text.primary)
-                                    #if os(iOS)
                                     .keyboardType(.numberPad)
-                                    #endif
                                 Text("kcal")
                                     .font(StackTheme.Typography.body)
                                     .foregroundStyle(StackTheme.Text.secondary)
@@ -78,7 +74,7 @@ struct LogCardioSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("NOTE (OPTIONAL)")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             TextField("Add a note…", text: $note, axis: .vertical)
                                 .font(StackTheme.Typography.body)
@@ -121,12 +117,8 @@ struct LogCardioSheet: View {
             }
             .background(StackTheme.Background.elevated)
             .navigationTitle("Log Cardio")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
-            #if os(iOS)
             .toolbarBackground(StackTheme.Background.elevated, for: .navigationBar)
-            #endif
         }
         .presentationBackground(StackTheme.Background.elevated)
         .presentationCornerRadius(StackTheme.Radius.lg)

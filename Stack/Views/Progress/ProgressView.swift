@@ -16,23 +16,28 @@ struct ProgressView: View {
                     LazyVGrid(columns: statColumns, spacing: StackTheme.Spacing.sm) {
                         StackStatCard(
                             value: "\(viewModel.currentStreak)",
-                            label: "Current Streak",
-                            icon: "flame.fill"
+                            unit: "d",
+                            label: "Streak",
+                            icon: "flame.fill",
+                            iconColor: viewModel.currentStreak > 0
+                                ? StackTheme.Accent.positive
+                                : StackTheme.Accent.primary
                         )
                         StackStatCard(
                             value: "\(viewModel.longestStreak)",
-                            label: "Longest Streak",
+                            unit: "d",
+                            label: "Best",
                             icon: "chart.line.uptrend.xyaxis"
                         )
                         StackStatCard(
                             value: "\(viewModel.totalActiveDays)",
-                            label: "Active Days",
+                            label: "Active",
                             icon: "calendar"
                         )
                     }
 
                     // Overall heatmap
-                    OverallHeatmapCard(viewModel: viewModel)
+                    HeatmapCard(title: "Overall Year", type: .overall, viewModel: viewModel)
 
                     // Individual heatmaps
                     HeatmapCard(title: "Protocol",  type: .protocol_, viewModel: viewModel)
@@ -42,9 +47,7 @@ struct ProgressView: View {
             }
             .background(StackTheme.Background.base.ignoresSafeArea())
             .navigationTitle("Progress")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
-            #endif
         }
         .onAppear {
             viewModel.setup(context: modelContext)

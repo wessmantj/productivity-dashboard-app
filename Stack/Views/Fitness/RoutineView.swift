@@ -7,7 +7,12 @@ struct RoutineView: View {
 
     @State private var editingDay: WorkoutDay? = nil
 
-    private static let dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+    /// Monday-first, matching the Protocol tab's week ordering.
+    private var orderedWorkouts: [WorkoutDay] {
+        Weekday.mondayFirst.compactMap { day in
+            workouts.first { $0.dayOfWeek == day }
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -58,7 +63,7 @@ struct RoutineView: View {
             ],
             spacing: 14
         ) {
-            ForEach(workouts) { workout in
+            ForEach(orderedWorkouts) { workout in
                 dayCard(workout)
                     .onTapGesture { editingDay = workout }
             }
@@ -68,16 +73,23 @@ struct RoutineView: View {
 
     @ViewBuilder
     private func dayCard(_ workout: WorkoutDay) -> some View {
+        let isToday = workout.dayOfWeek == Weekday.today
         StackCard {
             HStack(spacing: StackTheme.Spacing.md) {
                 // Day badge
-                VStack(spacing: 2) {
-                    Text(Self.dayNames[safe: workout.dayOfWeek - 1] ?? "")
-                        .font(StackTheme.Typography.label)
-                        .foregroundStyle(workout.isRestDay ? StackTheme.Text.tertiary : StackTheme.Text.secondary)
-                    Text("\(workout.dayOfWeek)")
-                        .font(StackTheme.Typography.title)
-                        .foregroundStyle(workout.isRestDay ? StackTheme.Text.tertiary : StackTheme.Text.primary)
+                VStack(spacing: 3) {
+                    Text(Weekday.shortName(for: workout.dayOfWeek).uppercased())
+                        .font(StackTheme.Typography.headline)
+                        .foregroundStyle(
+                            isToday ? StackTheme.Accent.primary
+                            : workout.isRestDay ? StackTheme.Text.tertiary
+                            : StackTheme.Text.secondary
+                        )
+                    if isToday {
+                        Circle()
+                            .fill(StackTheme.Accent.primary)
+                            .frame(width: 4, height: 4)
+                    }
                 }
                 .frame(width: 44)
 
@@ -98,11 +110,21 @@ struct RoutineView: View {
 
                 Spacer()
 
+                if isToday {
+                    StackBadge(text: "Today", color: StackTheme.Accent.primary, style: .subtle)
+                }
                 Image(systemName: workout.isRestDay ? "moon.zzz" : "chevron.right")
                     .font(.caption)
                     .foregroundStyle(StackTheme.Text.tertiary)
             }
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: StackTheme.Radius.md)
+                .strokeBorder(
+                    isToday ? StackTheme.Accent.primary.opacity(0.5) : .clear,
+                    lineWidth: 1
+                )
+        )
     }
 
     // MARK: - Seed 7 days
@@ -112,11 +134,5 @@ struct RoutineView: View {
             let workout = WorkoutDay(dayOfWeek: day)
             context.insert(workout)
         }
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

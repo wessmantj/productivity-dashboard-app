@@ -1,18 +1,15 @@
 import SwiftUI
 import SwiftData
-#if os(iOS)
-import UserNotifications
-#endif
 
 @main
 struct StackApp: App {
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @Environment(\.scenePhase) private var scenePhase
 
     let container: ModelContainer = {
         let schema = Schema([
             TaskItem.self,
-            HealthMetric.self,
             WorkoutDay.self,
             Exercise.self,
             Supplement.self,
@@ -34,42 +31,25 @@ struct StackApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-            #if os(macOS)
-                .frame(minWidth: 900, minHeight: 600)
-            #endif
+                .preferredColorScheme(.dark)
                 .onAppear {
                     WorkoutSeedService.seedIfNeeded(in: container.mainContext)
                     ScheduleSeedService.seedIfNeeded(in: container.mainContext)
                     ScheduleSeedService.seedBlockItemsIfNeeded(in: container.mainContext)
-                    requestNotificationAuth()
+                    DailyResetService.runIfNeeded(in: container.mainContext)
                 }
-                #if os(iOS)
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        DailyResetService.runIfNeeded(in: container.mainContext)
+                    }
+                }
                 .fullScreenCover(isPresented: Binding(
                     get: { !hasCompletedOnboarding },
                     set: { if !$0 { hasCompletedOnboarding = true } }
                 )) {
                     OnboardingView()
                 }
-                #else
-                .sheet(isPresented: Binding(
-                    get: { !hasCompletedOnboarding },
-                    set: { if !$0 { hasCompletedOnboarding = true } }
-                )) {
-                    OnboardingView()
-                }
-                #endif
         }
         .modelContainer(container)
-        #if os(macOS)
-        .defaultSize(width: 1100, height: 750)
-        #endif
-    }
-
-    private func requestNotificationAuth() {
-        #if os(iOS)
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: [.alert, .sound, .badge]
-        ) { _, _ in }
-        #endif
     }
 }

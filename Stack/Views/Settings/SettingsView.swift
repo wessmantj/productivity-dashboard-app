@@ -1,9 +1,6 @@
 import SwiftUI
 import SwiftData
-#if os(iOS)
 import HealthKit
-import UserNotifications
-#endif
 
 struct SettingsView: View {
 
@@ -12,10 +9,9 @@ struct SettingsView: View {
     @AppStorage("userName")                 private var userName:                String = ""
     @AppStorage("hasCompletedOnboarding")   private var hasCompletedOnboarding:  Bool   = false
     @AppStorage("protocolReminderEnabled")  private var protocolReminderEnabled: Bool   = false
-    @AppStorage("protocolReminderSecs")     private var protocolReminderSecs:     Double = 8 * 3600
+    @AppStorage("protocolReminderSecs")     private var protocolReminderSecs:    Double = 8 * 3600
     @AppStorage("eveningCheckInEnabled")    private var eveningCheckInEnabled:   Bool   = false
     @AppStorage("eveningCheckInSecs")       private var eveningCheckInSecs:      Double = 21 * 3600
-    @AppStorage("taskRemindersEnabled")     private var taskRemindersEnabled:    Bool   = false
 
     // MARK: - Local state
 
@@ -66,9 +62,7 @@ struct SettingsView: View {
             .background(StackTheme.Background.base.ignoresSafeArea())
             .scrollContentBackground(.hidden)
             .navigationTitle("Settings")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -76,6 +70,18 @@ struct SettingsView: View {
             }
         }
         .onAppear { checkHealthAuth() }
+        .onChange(of: protocolReminderEnabled) { _, enabled in
+            updateProtocolReminder(enabled: enabled)
+        }
+        .onChange(of: protocolReminderSecs) { _, _ in
+            updateProtocolReminder(enabled: protocolReminderEnabled)
+        }
+        .onChange(of: eveningCheckInEnabled) { _, enabled in
+            updateEveningCheckIn(enabled: enabled)
+        }
+        .onChange(of: eveningCheckInSecs) { _, _ in
+            updateEveningCheckIn(enabled: eveningCheckInEnabled)
+        }
         .alert("Reset Daily Protocol?", isPresented: $showResetProtocolAlert) {
             Button("Reset", role: .destructive) { resetDailyProtocol() }
             Button("Cancel", role: .cancel) {}
@@ -103,7 +109,7 @@ struct SettingsView: View {
                 HStack(spacing: StackTheme.Spacing.md) {
                     ZStack {
                         Circle()
-                            .fill(StackTheme.Accent.indigo)
+                            .fill(StackTheme.Accent.primary)
                             .frame(width: 48, height: 48)
                         Text(initials.isEmpty ? "?" : initials)
                             .font(StackTheme.Typography.headline)
@@ -133,11 +139,10 @@ struct SettingsView: View {
 
             StackCard {
                 VStack(spacing: StackTheme.Spacing.sm) {
-                    #if os(iOS)
                     Toggle("Daily protocol reminder", isOn: $protocolReminderEnabled)
                         .font(StackTheme.Typography.body)
                         .foregroundStyle(StackTheme.Text.primary)
-                        .tint(StackTheme.Accent.indigo)
+                        .tint(StackTheme.Accent.primary)
                     if protocolReminderEnabled {
                         Divider().background(StackTheme.Border.subtle)
                         DatePicker("Time",
@@ -148,23 +153,13 @@ struct SettingsView: View {
                     Toggle("Evening check-in", isOn: $eveningCheckInEnabled)
                         .font(StackTheme.Typography.body)
                         .foregroundStyle(StackTheme.Text.primary)
-                        .tint(StackTheme.Accent.indigo)
+                        .tint(StackTheme.Accent.primary)
                     if eveningCheckInEnabled {
                         Divider().background(StackTheme.Border.subtle)
                         DatePicker("Time",
                                    selection: eveningCheckInDate,
                                    displayedComponents: .hourAndMinute)
                     }
-                    Divider().background(StackTheme.Border.subtle)
-                    Toggle("Task due date reminders", isOn: $taskRemindersEnabled)
-                        .font(StackTheme.Typography.body)
-                        .foregroundStyle(StackTheme.Text.primary)
-                        .tint(StackTheme.Accent.indigo)
-                    #else
-                    Text("Notifications are available on iPhone only.")
-                        .font(StackTheme.Typography.body)
-                        .foregroundStyle(StackTheme.Text.secondary)
-                    #endif
                 }
             }
         }
@@ -177,7 +172,6 @@ struct SettingsView: View {
             StackSectionHeader(title: "Health")
 
             StackCard {
-                #if os(iOS)
                 VStack(spacing: StackTheme.Spacing.sm) {
                     HStack {
                         Label("Apple Health", systemImage: "heart.fill")
@@ -185,7 +179,7 @@ struct SettingsView: View {
                         Spacer()
                         HStack(spacing: 5) {
                             Circle()
-                                .fill(healthAuthorized ? StackTheme.Accent.green : StackTheme.Accent.red)
+                                .fill(healthAuthorized ? StackTheme.Accent.positive : StackTheme.Accent.negative)
                                 .frame(width: 8, height: 8)
                             Text(healthAuthorized ? "Connected" : "Not connected")
                                 .font(StackTheme.Typography.caption)
@@ -194,16 +188,11 @@ struct SettingsView: View {
                     }
                     if !healthAuthorized {
                         Divider().background(StackTheme.Border.subtle)
-                        Button("Re-authorize HealthKit") { requestHealthAuth() }
+                        Button("Connect Apple Health") { requestHealthAuth() }
                             .font(StackTheme.Typography.body)
-                            .foregroundStyle(StackTheme.Accent.indigo)
+                            .foregroundStyle(StackTheme.Accent.primary)
                     }
                 }
-                #else
-                Text("Health data is available on iPhone only.")
-                    .font(StackTheme.Typography.body)
-                    .foregroundStyle(StackTheme.Text.secondary)
-                #endif
             }
         }
     }
@@ -233,7 +222,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Reset Onboarding", systemImage: "sparkles")
                             .font(StackTheme.Typography.body)
-                            .foregroundStyle(StackTheme.Accent.red)
+                            .foregroundStyle(StackTheme.Accent.negative)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.plain)
@@ -249,25 +238,14 @@ struct SettingsView: View {
             StackSectionHeader(title: "App")
 
             StackCard {
-                VStack(spacing: StackTheme.Spacing.sm) {
-                    HStack {
-                        Text("Version")
-                            .font(StackTheme.Typography.body)
-                            .foregroundStyle(StackTheme.Text.primary)
-                        Spacer()
-                        Text(appVersion)
-                            .font(StackTheme.Typography.body)
-                            .foregroundStyle(StackTheme.Text.secondary)
-                    }
-
-                    Divider().background(StackTheme.Border.subtle)
-
-                    Link(destination: URL(string: "https://apps.apple.com/app/idXXXXXXXXXX")!) {
-                        Label("Rate Stack", systemImage: "star")
-                            .font(StackTheme.Typography.body)
-                            .foregroundStyle(StackTheme.Text.primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                HStack {
+                    Text("Version")
+                        .font(StackTheme.Typography.body)
+                        .foregroundStyle(StackTheme.Text.primary)
+                    Spacer()
+                    Text(appVersion)
+                        .font(StackTheme.Typography.body)
+                        .foregroundStyle(StackTheme.Text.secondary)
                 }
             }
 
@@ -281,42 +259,55 @@ struct SettingsView: View {
 
     // MARK: - Helpers
 
+    private func updateProtocolReminder(enabled: Bool) {
+        Task {
+            if enabled { _ = await NotificationService.requestAuthorization() }
+            NotificationService.updateProtocolReminder(
+                enabled: enabled,
+                secondsFromMidnight: protocolReminderSecs
+            )
+        }
+    }
+
+    private func updateEveningCheckIn(enabled: Bool) {
+        Task {
+            if enabled { _ = await NotificationService.requestAuthorization() }
+            NotificationService.updateEveningCheckIn(
+                enabled: enabled,
+                secondsFromMidnight: eveningCheckInSecs
+            )
+        }
+    }
+
     private func resetDailyProtocol() {
-        let todayWeekday = Calendar.current.component(.weekday, from: Date())
-        let dow = (todayWeekday - 2 + 7) % 7
+        let today = Weekday.today
         let desc = FetchDescriptor<ScheduleBlock>(
-            predicate: #Predicate<ScheduleBlock> { $0.dayOfWeek == dow }
+            predicate: #Predicate<ScheduleBlock> { $0.dayOfWeek == today }
         )
         if let blocks = try? modelContext.fetch(desc) {
-            for block in blocks where block.isCompletedToday {
+            for block in blocks {
                 block.lastCompletedDate = nil
+                for item in block.items {
+                    item.lastCompletedDate = nil
+                }
             }
         }
-        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
-        DayRecordService.updateProtocol(ratio: 0, for: fmt.string(from: Date()), in: modelContext)
+        DayRecordService.updateProtocol(ratio: 0, for: Date().dateKey, in: modelContext)
+        try? modelContext.save()
     }
 
     private func checkHealthAuth() {
-        #if os(iOS)
         healthAuthorized = UserDefaults.standard.bool(forKey: "healthKitAuthorized")
-        #endif
     }
 
     private func requestHealthAuth() {
-        #if os(iOS)
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        let types: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-        ]
-        HKHealthStore().requestAuthorization(toShare: [], read: types) { _, _ in
+        HKHealthStore().requestAuthorization(toShare: [], read: HealthKitService.readTypes) { _, _ in
             DispatchQueue.main.async {
                 UserDefaults.standard.set(true, forKey: "healthKitAuthorized")
                 self.healthAuthorized = true
             }
         }
-        #endif
     }
 }
 

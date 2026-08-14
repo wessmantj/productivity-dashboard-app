@@ -18,15 +18,13 @@ struct LogWeightSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("WEIGHT")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             HStack {
                                 TextField("e.g. 175.5", text: $poundsText)
                                     .font(StackTheme.Typography.title)
                                     .foregroundStyle(StackTheme.Text.primary)
-                                    #if os(iOS)
                                     .keyboardType(.decimalPad)
-                                    #endif
                                 Text("lbs")
                                     .font(StackTheme.Typography.body)
                                     .foregroundStyle(StackTheme.Text.secondary)
@@ -38,7 +36,7 @@ struct LogWeightSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("NOTE (OPTIONAL)")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             TextField("Add a note…", text: $note, axis: .vertical)
                                 .font(StackTheme.Typography.body)
@@ -79,7 +77,7 @@ struct LogWeightSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(
-                                canSave ? StackTheme.Accent.indigo : StackTheme.Accent.indigo.opacity(0.4),
+                                canSave ? StackTheme.Accent.primary : StackTheme.Accent.primary.opacity(0.4),
                                 in: RoundedRectangle(cornerRadius: StackTheme.Radius.md)
                             )
                     }
@@ -100,12 +98,8 @@ struct LogWeightSheet: View {
             }
             .background(StackTheme.Background.elevated)
             .navigationTitle("Log Weight")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
-            #if os(iOS)
             .toolbarBackground(StackTheme.Background.elevated, for: .navigationBar)
-            #endif
         }
         .presentationBackground(StackTheme.Background.elevated)
         .presentationCornerRadius(StackTheme.Radius.lg)

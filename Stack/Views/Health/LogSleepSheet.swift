@@ -18,7 +18,7 @@ struct LogSleepSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("DURATION")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             Picker("Hours", selection: $hours) {
                                 ForEach(Self.hourOptions, id: \.self) { h in
@@ -27,10 +27,8 @@ struct LogSleepSheet: View {
                                         .tag(h)
                                 }
                             }
-                            #if os(iOS)
                             .pickerStyle(.wheel)
                             .frame(height: 120)
-                            #endif
                         }
                     }
 
@@ -38,7 +36,7 @@ struct LogSleepSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("QUALITY")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             HStack(spacing: StackTheme.Spacing.sm) {
                                 ForEach(1...5, id: \.self) { star in
@@ -47,7 +45,7 @@ struct LogSleepSheet: View {
                                     } label: {
                                         Image(systemName: star <= quality ? "star.fill" : "star")
                                             .font(.title2)
-                                            .foregroundStyle(star <= quality ? StackTheme.Accent.gold : StackTheme.Text.tertiary)
+                                            .foregroundStyle(star <= quality ? StackTheme.Accent.warning : StackTheme.Text.tertiary)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -63,7 +61,7 @@ struct LogSleepSheet: View {
                     StackCard {
                         VStack(alignment: .leading, spacing: StackTheme.Spacing.sm) {
                             Text("NOTE (OPTIONAL)")
-                                .font(StackTheme.Typography.caption2)
+                                .font(StackTheme.Typography.label)
                                 .foregroundStyle(StackTheme.Text.tertiary)
                             TextField("Add a note…", text: $note, axis: .vertical)
                                 .font(StackTheme.Typography.body)
@@ -81,15 +79,15 @@ struct LogSleepSheet: View {
                             HStack {
                                 Image(systemName: "heart.fill")
                                     .font(StackTheme.Typography.caption)
-                                    .foregroundStyle(StackTheme.Accent.red)
+                                    .foregroundStyle(StackTheme.Accent.negative)
                                 Text("Use Apple Health value (\(String(format: "%.1f", hk)) hrs)")
                                     .font(StackTheme.Typography.body)
-                                    .foregroundStyle(StackTheme.Accent.red)
+                                    .foregroundStyle(StackTheme.Accent.negative)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .padding(.horizontal, StackTheme.Spacing.md)
-                            .background(StackTheme.Accent.red.opacity(0.12), in: RoundedRectangle(cornerRadius: StackTheme.Radius.md))
+                            .background(StackTheme.Accent.negative.opacity(0.12), in: RoundedRectangle(cornerRadius: StackTheme.Radius.md))
                         }
                         .buttonStyle(.plain)
                     }
@@ -122,12 +120,8 @@ struct LogSleepSheet: View {
             }
             .background(StackTheme.Background.elevated)
             .navigationTitle("Log Sleep")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
-            #if os(iOS)
             .toolbarBackground(StackTheme.Background.elevated, for: .navigationBar)
-            #endif
         }
         .presentationBackground(StackTheme.Background.elevated)
         .presentationCornerRadius(StackTheme.Radius.lg)

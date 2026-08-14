@@ -3,7 +3,6 @@ import SwiftUI
 // Applies native tab bar appearance — solid charcoal background, indigo selected state, no separator.
 // Apply via .stackTabBarStyle() on the TabView in AdaptiveNavigationView.
 
-#if os(iOS)
 private struct StackTabBarStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -13,8 +12,8 @@ private struct StackTabBarStyle: ViewModifier {
     private func applyAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(StackTheme.Background.surface)
-        appearance.shadowColor = .clear
+        appearance.backgroundColor = UIColor(StackTheme.Background.base)
+        appearance.shadowColor = UIColor(StackTheme.Border.subtle)
 
         let item = UITabBarItemAppearance()
         item.normal.iconColor   = UIColor(StackTheme.Text.secondary)
@@ -36,8 +35,3 @@ extension View {
         modifier(StackTabBarStyle())
     }
 }
-#else
-extension View {
-    func stackTabBarStyle() -> some View { self }
-}
-#endif
